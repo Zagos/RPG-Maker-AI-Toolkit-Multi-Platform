@@ -39,12 +39,14 @@ cp .env.example .env
 ```
 
 Edit `.env`:
+
 ```env
 RPGMAKER_PROJECT_PATH=/full/path/to/your/rpg/maker/mz/project
 MCP_DEBUG=true
 ```
 
 **Path examples:**
+
 - Linux/Mac: `/home/user/Documents/MyGame`
 - Windows: `C:\Users\user\Documents\MyGame`
 
@@ -93,14 +95,105 @@ RpgMakerMCP/
 └── README.md
 ```
 
-### Available Tools (Phase 1)
+### Available Tools
 
 #### `health-check`
-Checks that the MCP server is working correctly.
+
+Checks that the MCP server is running and connected properly.
 
 ```
 Input: (none)
 Output: Server status, project path, timestamp
+```
+
+#### `list-game-data`
+
+Lists all available game data types in the RPG Maker project.
+
+```
+Input: data_type (string enum: Actors, Classes, Skills, etc.)
+Output: Data type info, count, preview
+```
+
+#### `edit-actor`
+
+Create or edit an actor (playable character).
+
+```
+Input: actor_id (optional), name, nickname, class_id, etc.
+Output: Success message with actor ID
+```
+
+#### `edit-item`
+
+Create or edit an item.
+
+```
+Input: item_id (optional), name, description, price
+Output: Success message with item ID
+```
+
+#### `edit-enemy`
+
+Create or edit an enemy.
+
+```
+Input: enemy_id (optional), name, gold, exp
+Output: Success message with enemy ID
+```
+
+#### `create-plugin`
+
+Create a basic JavaScript plugin.
+
+```
+Input: plugin_name, description, author, version, code_type
+Output: Success message with filename and path
+```
+
+#### `add-dialogue`
+
+Add simple dialogue to a common event.
+
+```
+Input: dialogue_lines (array), event_name (optional)
+Output: Success message with event ID
+```
+
+#### `create-plugin-advanced`
+
+Create advanced plugins with templates.
+
+```
+Input: plugin_name, description, author, version, template_type
+Output: Success message with filename
+```
+
+#### `create-dialogue-advanced`
+
+Create branching dialogue systems.
+
+```
+Input: dialogue_name, dialogue_nodes (array)
+Output: Success message with common event ID
+```
+
+#### `create-map-event`
+
+Create events on maps (NPCs, chests, triggers).
+
+```
+Input: map_id, event_name, x, y, event_type, etc.
+Output: Success message with event ID
+```
+
+#### `story-generator`
+
+Generate complete stories with scenes and events.
+
+```
+Input: story_title, story_description, scenes (array)
+Output: Success message with story details
 ```
 
 ## Español
@@ -140,12 +233,14 @@ cp .env.example .env
 ```
 
 Edita `.env`:
+
 ```env
 RPGMAKER_PROJECT_PATH=/ruta/completa/a/tu/proyecto/rpg/maker/mz
 MCP_DEBUG=true
 ```
 
 **Ejemplos de rutas:**
+
 - Linux/Mac: `/home/usuario/Documentos/MiJuego`
 - Windows: `C:\Users\usuario\Documentos\MiJuego`
 
@@ -194,9 +289,10 @@ RpgMakerMCP/
 └── README.md
 ```
 
-### Herramientas Disponibles (Fase 1)
+### Herramientas Disponibles
 
 #### `health-check`
+
 Verifica que el servidor MCP esté funcionando correctamente.
 
 ```
@@ -204,75 +300,103 @@ Input: (ninguno)
 Output: Estado del servidor, ruta del proyecto, timestamp
 ```
 
-### `list-game-data`
-Lista datos disponibles en tu proyecto RPG Maker MZ.
+#### `list-game-data`
+
+Lista todos los tipos de datos disponibles en el proyecto RPG Maker.
 
 ```
-Input: 
-  - data_type: "actors" | "enemies" | "items" | "weapons" | "armors" | "skills" | "etc."
-  
-Output:
-  - count: Número de elementos
-  - preview: Primeros 3 elementos
-  - data_type: Tipo de dato listado
+Input: data_type (enum: Actors, Classes, Skills, etc.)
+Output: Información del tipo de dato, cantidad, vista previa
 ```
 
-**Tipos de datos soportados:**
-- `actors` - Personajes jugables
-- `classes` - Clases
-- `skills` - Habilidades
-- `items` - Items/Objetos
-- `weapons` - Armas
-- `armors` - Armaduras
-- `enemies` - Enemigos
-- `troops` - Tropas (grupos de enemigos)
-- `states` - Estados (envenenar, dormir, etc.)
-- `animations` - Animaciones
-- `tilesets` - Tilesets
-- `maps` - Mapas
-- `common_events` - Eventos comunes
+#### `edit-actor`
 
-## Herramientas Avanzadas (Fase 3)
+Crear o editar un actor (personaje jugable).
 
-### `create-plugin-advanced`
-Genera plugins RPG Maker MZ con cabecera, ayuda, parámetros y plantillas para:
+```
+Input: actor_id (opcional), name, nickname, class_id, etc.
+Output: Mensaje de éxito con ID del actor
+```
 
-- `with-parameters`
-- `game-actor`
-- `game-enemy`
-- `event-handler`
-- `custom-ui`
+#### `edit-item`
 
-### `create-dialogue-advanced`
-Crea un sistema de diálogo ramificado. Además de guardar un manifiesto `Dialogue_*.json`, genera un evento común ejecutable con:
+Crear o editar un item.
 
-- Mensajes con nombre de hablante
-- Labels por nodo
-- Elecciones que saltan a otros nodos
-- Acciones simples como `setSwitch`, `setVariable`, `addItem`, `addGold`, `commonEvent` y `script`
+```
+Input: item_id (opcional), name, description, price
+Output: Mensaje de éxito con ID del item
+```
 
-### `create-map-event`
-Crea eventos reales dentro de `MapXXX.json` y guarda backup del mapa antes de escribir. Soporta NPCs, cofres, puertas, triggers, scripts, páginas, sprites, diálogo inicial y comandos de evento básicos.
+#### `edit-enemy`
 
-### `story-generator`
-Genera una narrativa completa como `Story_*.json` y crea un evento común por escena con diálogos, batallas, elecciones, animaciones, transferencias y anotaciones de ramas/prerrequisitos.
+Crear o editar un enemigo.
 
-## Próximas Fases (Roadmap)
+```
+Input: enemy_id (opcional), name, gold, exp
+Output: Mensaje de éxito con ID del enemigo
+```
 
-### Fase 2: Core MCP
-- Crear/editar actores (personajes)
-- Crear/editar enemigos
-- Crear/editar items, armas, armaduras
-- Crear plugins básicos
-- Sistema de diálogos
+#### `create-plugin`
 
-### Fase 3: Avanzado
+Crear un plugin JavaScript básico.
+
+```
+Input: plugin_name, description, author, version, code_type
+Output: Mensaje de éxito con nombre de archivo y ruta
+```
+
+#### `add-dialogue`
+
+Agregar diálogo simple a un evento común.
+
+```
+Input: dialogue_lines (array), event_name (opcional)
+Output: Mensaje de éxito con ID del evento
+```
+
+#### `create-plugin-advanced`
+
+Crear plugins avanzados con plantillas.
+
+```
+Input: plugin_name, description, author, version, template_type
+Output: Mensaje de éxito con nombre de archivo
+```
+
+#### `create-dialogue-advanced`
+
+Crear sistemas de diálogo ramificados.
+
+```
+Input: dialogue_name, dialogue_nodes (array)
+Output: Mensaje de éxito con ID del evento común
+```
+
+#### `create-map-event`
+
+Crear eventos en mapas (NPCs, cofres, triggers).
+
+```
+Input: map_id, event_name, x, y, event_type, etc.
+Output: Mensaje de éxito con ID del evento
+```
+
+#### `story-generator`
+
+Generar historias completas con escenas y eventos.
+
+```
+Input: story_title, story_description, scenes (array)
+Output: Mensaje de éxito con detalles de la historia
+```
+
 - ✅ Generador de plugins sofisticados
 - ✅ Sistema de diálogos ramificados
 - ✅ Generador de eventos de mapa
 - ✅ Generador de narrativa (escenas complejas)
 
 ### Fase 4: Testing & Integración
+
 - Tests automatizados
 - Validación con proyecto real
 - Documentación de herramientas
@@ -280,16 +404,21 @@ Genera una narrativa completa como `Story_*.json` y crea un evento común por es
 ## Solución de Problemas
 
 ### Error: "RPGMAKER_PROJECT_PATH is not set"
+
 **Solución:** Configura la variable `RPGMAKER_PROJECT_PATH` en `.env` con la ruta correcta a tu proyecto.
 
 ### Error: "RPG Maker project path does not exist"
+
 **Solución:** Verifica que la ruta en `.env` sea correcta y que el directorio exista.
 
 ### Error: "RPG Maker data directory not found"
+
 **Solución:** Asegúrate de que el proyecto es RPG Maker MZ (debe tener una carpeta `data/` en la raíz).
 
 ### El servidor se congela o no responde
-**Solución:** 
+
+**Solución:**
+
 1. Presiona `Ctrl+C` para detener
 2. Verifica que `RPGMAKER_PROJECT_PATH` sea accesible
 3. Reinicia con `npm run dev`
@@ -305,3 +434,4 @@ MIT
 ---
 
 **¿Preguntas o problemas?** Revisa la documentación o contacta al desarrollador.
+Created by **Zagos**
