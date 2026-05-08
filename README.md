@@ -26,6 +26,7 @@ MCP Server that connects to your **RPG Maker MZ** projects, allowing you to crea
 #### 1. Clone or download the project
 
 ```bash
+git clone git@github.com:Zagos/RPG-Maker-AI-Toolkit.git
 cd RpgMakerMCP
 npm install
 ```
@@ -220,6 +221,7 @@ Servidor MCP que conecta con tus proyectos de **RPG Maker MZ**, permitiendo crea
 #### 1. Clonar o descargar el proyecto
 
 ```bash
+git clone git@github.com:Zagos/RPG-Maker-AI-Toolkit.git
 cd RpgMakerMCP
 npm install
 ```
