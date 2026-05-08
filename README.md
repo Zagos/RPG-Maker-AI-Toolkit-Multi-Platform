@@ -434,4 +434,7 @@ MIT
 ---
 
 **¿Preguntas o problemas?** Revisa la documentación o contacta al desarrollador.
+
+---
+
 Created by **Zagos**
