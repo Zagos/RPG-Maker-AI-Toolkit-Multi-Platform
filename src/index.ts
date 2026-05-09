@@ -685,8 +685,21 @@ function handleToolCall(
         }
 
         try {
-          const filename = `${pluginName}.js`;
+          const rawFilename = `${pluginName}.js`;
+          const filename = rawFilename.replace(/\.js+$/i, ".js");
           writer.writePlugin(filename, pluginCode);
+
+          // Ensure plugins.js registry entry updated with metadata
+          try {
+            writer.updatePluginsRegistry({
+              name: filename.replace(/\.js$/i, ""),
+              status: true,
+              description: description || "",
+              parameters: {},
+            });
+          } catch (err) {
+            logger.warn("Failed to update plugins registry metadata", err);
+          }
 
           return JSON.stringify({
             success: true,
@@ -849,6 +862,18 @@ function handleToolCall(
 
           const filename = `${pluginName}.js`;
           writer.writePlugin(filename, pluginCode);
+
+          // Ensure plugins.js registry entry updated with metadata
+          try {
+            writer.updatePluginsRegistry({
+              name: filename.replace(/\.js$/i, ""),
+              status: true,
+              description: description || "",
+              parameters: {},
+            });
+          } catch (err) {
+            logger.warn("Failed to update plugins registry metadata", err);
+          }
 
           return JSON.stringify({
             success: true,
