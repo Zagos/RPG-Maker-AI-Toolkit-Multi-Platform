@@ -135,11 +135,51 @@ export class RPGMakerWriter {
   }
 
   /**
-   * Escribe un mapa RPG Maker MZ por ID.
+   * Escribe un mapa RPG Maker MZ por ID y actualiza MapInfos.json + System.json.versionId
    */
-  writeMap(mapId: number, mapData: unknown): void {
+  writeMap(mapId: number, mapData: unknown, mapInfo?: unknown): void {
     const mapFilename = `Map${String(mapId).padStart(3, "0")}.json`;
+
+    // Escribe el archivo del mapa
     this.writeJsonFile(mapFilename, mapData);
+
+    // Actualiza MapInfos.json (asegura longitud y valor)
+    const mapInfosPath = path.join(this.dataPath, "MapInfos.json");
+    try {
+      let mapInfos: Array<Record<string, unknown> | null> = [];
+      if (fs.existsSync(mapInfosPath)) {
+        const content = fs.readFileSync(mapInfosPath, "utf-8");
+        try {
+          mapInfos = JSON.parse(content) as Array<Record<string, unknown> | null>;
+        } catch {
+          mapInfos = [];
+        }
+      }
+
+      // Asegurar tamaño suficiente
+      while (mapInfos.length <= mapId) {
+        mapInfos.push(null);
+      }
+
+      if (mapInfo !== undefined) {
+        mapInfos[mapId] = mapInfo as Record<string, unknown> | null;
+      }
+
+      this.writeJsonFile("MapInfos.json", mapInfos);
+    } catch (error) {
+      if (this.debug) {
+        console.error("Failed to update MapInfos.json:", error);
+      }
+    }
+
+    // Refresh System.json versionId para forzar recarga del editor
+    try {
+      this.refreshVersionId();
+    } catch (error) {
+      if (this.debug) {
+        console.error("Failed to refresh System.json versionId:", error);
+      }
+    }
   }
 
   /**
@@ -242,41 +282,6 @@ export class RPGMakerWriter {
   }
 
   /**
-   * Escribe un plugin JavaScript
-   */
-  writePlugin(filename: string, content: string): void {
-    const jsPath = path.join(this.projectPath, "js", "plugins");
-
-    if (!fs.existsSync(jsPath)) {
-      fs.mkdirSync(jsPath, { recursive: true });
-    }
-
-    const pluginPath = path.join(jsPath, filename);
-
-    // Crear backup si el archivo existe
-    if (fs.existsSync(pluginPath) && this.createBackup) {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const backupFile = path.join(
-        this.backupPath,
-        `${filename.replace(".js", "")}_${timestamp}.js`
-      );
-      fs.writeFileSync(backupFile, fs.readFileSync(pluginPath, "utf-8"), "utf-8");
-    }
-
-    try {
-      fs.writeFileSync(pluginPath, content, "utf-8");
-
-      if (this.debug) {
-        console.log(`[DEBUG] Plugin written: ${pluginPath}`);
-      }
-    } catch (error) {
-      throw new Error(
-        `Failed to write plugin ${filename}: ${(error as Error).message}`
-      );
-    }
-  }
-
-  /**
    * Agrega un evento común
    */
   addCommonEvent(eventData: Record<string, unknown>): number {
@@ -336,6 +341,126 @@ export class RPGMakerWriter {
       throw new Error(
         `Failed to restore backup: ${(error as Error).message}`
       );
+    }
+  }
+
+  /**
+   * Escribe un plugin JavaScript
+   */
+  writePlugin(filename: string, content: string): void {
+    const jsPath = path.join(this.projectPath, "js", "plugins");
+
+    if (!fs.existsSync(jsPath)) {
+      fs.mkdirSync(jsPath, { recursive: true });
+    }
+
+    const pluginPath = path.join(jsPath, filename);
+
+    // Crear backup si el archivo existe
+    if (fs.existsSync(pluginPath) && this.createBackup) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const backupFile = path.join(
+        this.backupPath,
+        `${filename.replace(".js", "")}_${timestamp}.js`
+      );
+      fs.writeFileSync(backupFile, fs.readFileSync(pluginPath, "utf-8"), "utf-8");
+    }
+
+    try {
+      fs.writeFileSync(pluginPath, content, "utf-8");
+
+      if (this.debug) {
+        console.log(`[DEBUG] Plugin written: ${pluginPath}`);
+      }
+
+      // Actualizar registro de plugins (plugins.js)
+      try {
+        const pluginName = filename.endsWith(".js") ? filename.replace(/\.js$/i, "") : filename;
+        this.updatePluginsRegistry({
+          name: pluginName,
+          status: true,
+          description: "",
+          parameters: {},
+        });
+      } catch (err) {
+        if (this.debug) console.error("Failed to update plugins registry:", err);
+      }
+    } catch (error) {
+      throw new Error(
+        `Failed to write plugin ${filename}: ${(error as Error).message}`
+      );
+    }
+  }
+
+  /**
+   * Actualiza (o crea) el archivo js/plugins.js con la lista de plugins
+   */
+  updatePluginsRegistry(pluginEntry: { name: string; status?: boolean; description?: string; parameters?: Record<string, unknown>; } | { name: string; status?: boolean; description?: string; parameters?: Record<string, unknown>; }[]): void {
+    const pluginsJsPath = path.join(this.projectPath, "js", "plugins.js");
+
+    // Normalize entry to array
+    const entries = Array.isArray(pluginEntry) ? pluginEntry : [pluginEntry];
+
+    let plugins: Array<{ name: string; status?: boolean; description?: string; parameters?: Record<string, unknown> }> = [];
+
+    if (fs.existsSync(pluginsJsPath)) {
+      try {
+        const content = fs.readFileSync(pluginsJsPath, "utf-8");
+        const match = content.match(/\$plugins\s*=\s*(\[[\s\S]*?\])/);
+        if (match) {
+          try {
+            plugins = JSON.parse(match[1]) as Array<{ name: string; status?: boolean; description?: string; parameters?: Record<string, unknown> }>;
+          } catch {
+            plugins = [];
+          }
+        }
+      } catch {
+        plugins = [];
+      }
+    }
+
+    for (const e of entries) {
+      const name = e.name;
+      const idx = plugins.findIndex((p) => p && p.name === name);
+      const entry = {
+        name,
+        status: e.status === undefined ? true : Boolean(e.status),
+        description: e.description || "",
+        parameters: e.parameters || {},
+      };
+
+      if (idx >= 0) {
+        plugins[idx] = entry;
+      } else {
+        plugins.push(entry);
+      }
+    }
+
+    const out = `// Generated by RPG Maker MCP Server\nvar $plugins = ${JSON.stringify(plugins, null, 2)};\n`;
+
+    try {
+      fs.writeFileSync(pluginsJsPath, out, "utf-8");
+    } catch (err) {
+      if (this.debug) console.error("Failed to write plugins.js:", err);
+    }
+  }
+
+  /**
+   * Refresh System.json versionId to force editor refresh
+   */
+  refreshVersionId(): void {
+    const systemPath = path.join(this.dataPath, "System.json");
+
+    if (!fs.existsSync(systemPath)) return;
+
+    try {
+      const content = fs.readFileSync(systemPath, "utf-8");
+      const system = JSON.parse(content) as Record<string, unknown> & { versionId?: number };
+      // Use a large random integer to minimize collision probability
+      system.versionId = Math.floor(Math.random() * 1_000_000_000);
+      this.writeJsonFile("System.json", system);
+    } catch (err) {
+      if (this.debug) console.error("Failed to refresh System.json:", err);
     }
   }
 }
