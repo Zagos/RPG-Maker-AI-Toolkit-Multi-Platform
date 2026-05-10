@@ -1,82 +1,81 @@
-# RPG Maker MCP - Model Context Protocol Server for RPG Maker MZ
+# RPG Maker MCP
 
-This README is available in [English](#english) and [Español](#español).
+**Model Context Protocol server for RPG Maker MZ** — lets any MCP-compatible AI (Claude, GPT, etc.) read and write your game project directly.
+
+> Available in [English](#english) · [Español](#español)
+
+---
 
 ## English
 
-MCP Server that connects to your **RPG Maker MZ** projects, allowing you to create and edit content directly using AI.
+### What it does
 
-### Features
-
-- ✅ Read/write game data (enemies, items, characters, etc.)
-- ✅ JavaScript plugin creation
-- ✅ Dialogue and narrative editing
-- ✅ Automatic backup system
-- ✅ Event and scene generation
-- ✅ RPG Maker MZ data validation
+RPG Maker MCP exposes your RPG Maker MZ project as a set of tools that an AI assistant can call. Instead of describing what you want and then copy-pasting JSON by hand, you just ask the AI and it reads/writes the project files for you — with automatic backups, validation, and a full change log.
 
 ### Requirements
 
-- **Node.js** 18+
-- **TypeScript** (for development)
-- **RPG Maker MZ** (existing project)
+| Requirement | Version |
+|---|---|
+| Node.js | 20 + |
+| RPG Maker MZ | any (existing project) |
+
+TypeScript is only needed for development; the compiled output runs with plain Node.
 
 ### Installation
 
-#### 1. Clone or download the project
-
 ```bash
-git clone git@github.com:Zagos/RPG-Maker-AI-Toolkit.git
+git clone https://github.com/Zagos/RPG-Maker-AI-Toolkit.git
 cd RpgMakerMCP
 npm install
+npm run build
 ```
 
-#### 2. Configure environment variables
+### Configuration
 
-Copy `.env.example` to `.env` and configure the path to your RPG Maker MZ project:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
+Copy `.env.example` to `.env` and fill in your paths:
 
 ```env
-RPGMAKER_PROJECT_PATH=/full/path/to/your/rpg/maker/mz/project
-MCP_DEBUG=true
+# Required — absolute path to your RPG Maker MZ project root
+RPGMAKER_PROJECT_PATH=C:\Users\you\Documents\MyGame
+
+# Optional — path to the RPG Maker MZ executable (for launch-game tool)
+RPGMAKER_EXECUTABLE_PATH=C:\Program Files\RPG Maker MZ\RPGMakerMZ.exe
+
+# Optional
+MCP_DEBUG=false
+LOG_LEVEL=info          # debug | info | warn | error
+BACKUP_MAX_COUNT=10     # how many backup files to keep per JSON file
 ```
 
-**Path examples:**
-
-- Linux/Mac: `/home/user/Documents/MyGame`
-- Windows: `C:\Users\user\Documents\MyGame`
-
-#### 3. Verify installation
+### Running
 
 ```bash
-npm run build
-npm start
-```
-
-If you see the message `✓ MCP Server connected and ready`, everything is configured correctly.
-
-### Usage
-
-#### Development Mode
-
-For development with auto-reload:
-
-```bash
+# Development (auto-reload on save)
 npm run dev
-```
 
-#### Production Mode
-
-Compile to JavaScript and run:
-
-```bash
+# Production
 npm run build
 npm start
+```
+
+When the server starts you will see `✓ RPG Maker project found at: …` in the console.
+
+### Connecting to Claude Desktop
+
+Add this block to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "rpgmaker": {
+      "command": "node",
+      "args": ["C:/path/to/RpgMakerMCP/dist/index.js"],
+      "env": {
+        "RPGMAKER_PROJECT_PATH": "C:/path/to/MyGame"
+      }
+    }
+  }
+}
 ```
 
 ### Project Structure
@@ -84,359 +83,347 @@ npm start
 ```
 RpgMakerMCP/
 ├── src/
-│   ├── index.ts              # Main MCP Server
-│   ├── config/               # Configuration (coming soon)
-│   ├── tools/                # MCP Tools
-│   ├── rpgmaker/             # RPG Maker data readers/writers
-│   └── types/                # TypeScript definitions
-├── package.json
-├── tsconfig.json
-├── .env                      # Environment variables (local)
-├── .env.example              # Variables template
-└── README.md
+│   ├── index.ts               # Server entry point, tool registry
+│   ├── handlers/              # One file per tool group
+│   │   ├── registry.ts        # TOOL_HANDLERS routing map
+│   │   ├── actor.ts / item.ts / enemy.ts …
+│   │   ├── batch-edit.ts      # Batch dispatcher
+│   │   └── types.ts           # HandlerContext interface
+│   ├── rpgmaker/
+│   │   ├── reader.ts          # JSON read helpers
+│   │   ├── writer.ts          # JSON write + backup + prune
+│   │   ├── validator.ts       # Input validation
+│   │   ├── change-log.ts      # mcp-changes.json audit log
+│   │   ├── commands.ts        # Event command builders
+│   │   ├── story-manager.ts
+│   │   └── dialogue-manager.ts
+│   ├── tools/                 # Zod/JSON schema definitions (one per tool)
+│   └── types/                 # RPG Maker MZ TypeScript interfaces
+├── tests/                     # Vitest test suite (163 tests)
+├── scripts/                   # launch-rpgmaker.js helper
+├── skills/                    # Claude Code slash-command skills
+├── .env.example
+└── .github/workflows/ci.yml   # Node 20 + 22 matrix CI
 ```
 
 ### Available Tools
 
-#### `health-check`
+All tools return JSON. `_id` fields are optional on input — omit them to **create** a new entity; include them to **update** an existing one.
 
-Checks that the MCP server is running and connected properly.
+---
 
+#### Data & System
+
+| Tool | Description |
+|---|---|
+| `health-check` | Server liveness check — returns status, project path, timestamp |
+| `list-game-data` | List entities of a given type with names and IDs |
+| `read-map` | Read map metadata, events list and encounter groups |
+| `get-change-history` | Query the audit log of all MCP writes |
+
+**`list-game-data`** — `data_type` enum: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops` `States` `Animations` `Tilesets` `Maps` `CommonEvents`
+
+**`read-map`** — input: `map_id (number)`
+
+**`get-change-history`** — filters: `limit` · `entity_type` · `tool` · `action (create|update|delete)` · `since (ISO 8601)`
+
+---
+
+#### Characters & Enemies
+
+| Tool | Key inputs |
+|---|---|
+| `edit-actor` | `actor_id?` · `name` · `nickname` · `class_id` · `initial_level` · `max_level` · `face_name` · `character_name` |
+| `edit-enemy` | `enemy_id?` · `name` · `gold` · `exp` |
+
+---
+
+#### Equipment & Items
+
+| Tool | Key inputs |
+|---|---|
+| `edit-item` | `item_id?` · `name` · `description` · `price` · `icon_index` |
+| `edit-weapon` | `weapon_id?` · `name` · `wtype_id` · `price` · `icon_index` · `animation_id` · stat bonuses |
+| `edit-armor` | `armor_id?` · `name` · `atype_id` · `price` · `icon_index` · stat bonuses |
+
+Stat bonus fields (weapons & armors): `max_hp` · `max_mp` · `attack` · `defense` · `magic_attack` · `magic_defense` · `agility` · `luck`
+
+---
+
+#### Skills, Classes & States
+
+| Tool | Key inputs |
+|---|---|
+| `edit-skill` | `skill_id?` · `name` · `description` · `mp_cost` · `tp_cost` · `scope` · `occasion` · `speed` · `success_rate` · `animation_id` · `damage_type` · `icon_index` · `message1` · `message2` |
+| `edit-class` | `class_id?` · `name` · `exp_basis` · `exp_extra` · `exp_acc_a` · `exp_acc_b` |
+| `edit-state` | `state_id?` · `name` · `icon_index` · `priority` · `restriction` · `min_turns` · `max_turns` · `remove_at_battle_end` · `remove_by_recover` · `remove_by_damage` · `damage_rate` |
+
+---
+
+#### Maps & Events
+
+| Tool | Key inputs |
+|---|---|
+| `create-map-event` | `map_id` · `event_name` · `x` · `y` · `event_type (npc\|chest\|enemy\|trigger)` · `character` · `pages` · `dialogue` · `treasure` · `troop_id` |
+| `add-dialogue` | `dialogue_lines [{speaker?, text}]` · `event_name?` |
+| `create-dialogue-advanced` | `dialogue_name` · `dialogue_nodes` (branching tree with choices, conditions, actions) |
+| `story-generator` | `story_title` · `story_description` · `scenes` (full multi-scene story) |
+
+`create-map-event` **event types:**
+- `npc` — walking/talking character
+- `chest` — treasure chest with item reward
+- `enemy` — battle trigger
+- `trigger` — generic script trigger
+
+---
+
+#### Plugins
+
+| Tool | Key inputs |
+|---|---|
+| `create-plugin` | `plugin_name` · `description` · `author` · `version` · `code_type (empty\|simple-hook\|command\|skill-modifier)` |
+| `create-plugin-advanced` | `plugin_name` · `template_type (with-parameters\|game-actor\|game-enemy\|event-handler\|custom-ui)` |
+| `setup-debug-plugin` | *(no input)* — installs the AI debug bridge plugin |
+
+Plugin filenames are sanitized on write: names with `<>:"/\|?*`, path separators, or Windows reserved names (CON, NUL, COM1…) are rejected.
+
+---
+
+#### Backups
+
+| Tool | Key inputs |
+|---|---|
+| `manage-backups` | `action (list\|restore\|delete\|prune)` · `filename?` · `backup_name?` · `max_count?` |
+
+Backups are created automatically before every write and stored in `<project>/backups/`. The `BACKUP_MAX_COUNT` env var (default `10`) controls how many are kept per file.
+
+---
+
+#### Batch Operations
+
+| Tool | Key inputs |
+|---|---|
+| `batch-edit` | `operations [{tool, input}]` (max 50) · `stop_on_error?` |
+
+Executes multiple tool calls in a single MCP round-trip. Each operation runs in order; failures are reported per-operation and do not block the rest (unless `stop_on_error: true`).
+
+```json
+{
+  "operations": [
+    { "tool": "edit-actor", "input": { "actor_id": 1, "name": "Aria" } },
+    { "tool": "edit-item",  "input": { "name": "Mana Potion", "price": 150 } },
+    { "tool": "edit-skill", "input": { "skill_id": 5, "mp_cost": 20 } }
+  ]
+}
 ```
-Input: (none)
-Output: Server status, project path, timestamp
+
+---
+
+#### Debug / Battle
+
+| Tool | Description |
+|---|---|
+| `launch-game` | Launch the RPG Maker MZ executable |
+| `start-encounter` | Trigger a battle via the debug bridge (requires `setup-debug-plugin` first) |
+
+---
+
+### Change Log
+
+Every successful write appends an entry to `<project>/mcp-changes.json`. Use `get-change-history` to query it:
+
+```json
+{ "tool": "get-change-history", "input": { "action": "create", "limit": 20 } }
 ```
 
-#### `list-game-data`
+Entry fields: `timestamp` · `tool` · `entityType` · `entityId` · `action` · `summary`
 
-Lists all available game data types in the RPG Maker project.
+---
 
-```
-Input: data_type (string enum: Actors, Classes, Skills, etc.)
-Output: Data type info, count, preview
-```
+### Running Tests
 
-#### `edit-actor`
-
-Create or edit an actor (playable character).
-
-```
-Input: actor_id (optional), name, nickname, class_id, etc.
-Output: Success message with actor ID
+```bash
+npm test                  # run all tests once
+npm run test:watch        # watch mode
+npm run test:coverage     # with v8 coverage report
 ```
 
-#### `edit-item`
+163 tests across 8 suites (writer, commands, validator, story-manager, dialogue-manager, phase3, phase4, phase5).
 
-Create or edit an item.
+---
 
-```
-Input: item_id (optional), name, description, price
-Output: Success message with item ID
-```
+### Troubleshooting
 
-#### `edit-enemy`
+| Error | Fix |
+|---|---|
+| `RPGMAKER_PROJECT_PATH is not set` | Set the variable in `.env` |
+| `RPG Maker project path does not exist` | Verify the path; use forward slashes on Windows too |
+| `RPG Maker data directory not found` | The project root must contain a `data/` folder |
+| `Invalid plugin filename` | Plugin names must not contain `<>:"/\|?*` or path separators |
+| `mapInfo is missing required fields` | Pass all 7 fields when providing mapInfo to `create-map-event` |
+| Server hangs | `Ctrl+C`, verify the project path is accessible, restart with `npm run dev` |
 
-Create or edit an enemy.
-
-```
-Input: enemy_id (optional), name, gold, exp
-Output: Success message with enemy ID
-```
-
-#### `create-plugin`
-
-Create a basic JavaScript plugin.
-
-```
-Input: plugin_name, description, author, version, code_type
-Output: Success message with filename and path
-```
-
-#### `add-dialogue`
-
-Add simple dialogue to a common event.
-
-```
-Input: dialogue_lines (array), event_name (optional)
-Output: Success message with event ID
-```
-
-#### `create-plugin-advanced`
-
-Create advanced plugins with templates.
-
-```
-Input: plugin_name, description, author, version, template_type
-Output: Success message with filename
-```
-
-#### `create-dialogue-advanced`
-
-Create branching dialogue systems.
-
-```
-Input: dialogue_name, dialogue_nodes (array)
-Output: Success message with common event ID
-```
-
-#### `create-map-event`
-
-Create events on maps (NPCs, chests, triggers).
-
-```
-Input: map_id, event_name, x, y, event_type, etc.
-Output: Success message with event ID
-```
-
-#### `story-generator`
-
-Generate complete stories with scenes and events.
-
-```
-Input: story_title, story_description, scenes (array)
-Output: Success message with story details
-```
+---
 
 ## Español
 
-Servidor MCP que conecta con tus proyectos de **RPG Maker MZ**, permitiendo crear y editar contenido directamente usando IA.
+### Qué hace
 
-### Características
-
-- ✅ Lectura/escritura de datos de juego (enemigos, items, personajes, etc.)
-- ✅ Creación de plugins JavaScript
-- ✅ Edición de diálogos y narrativa
-- ✅ Sistema automático de backups
-- ✅ Generación de eventos y escenas
-- ✅ Validación de datos RPG Maker MZ
+RPG Maker MCP expone tu proyecto de RPG Maker MZ como un conjunto de herramientas que un asistente IA puede llamar. En lugar de describir lo que quieres y copiar JSON a mano, simplemente pides al agente que lo haga — con backups automáticos, validación y un historial de cambios completo.
 
 ### Requisitos
 
-- **Node.js** 18+
-- **TypeScript** (para desarrollo)
-- **RPG Maker MZ** (proyecto existente)
+| Requisito | Versión |
+|---|---|
+| Node.js | 20 + |
+| RPG Maker MZ | cualquiera (proyecto existente) |
 
 ### Instalación
 
-#### 1. Clonar o descargar el proyecto
-
 ```bash
-git clone git@github.com:Zagos/RPG-Maker-AI-Toolkit.git
+git clone https://github.com/Zagos/RPG-Maker-AI-Toolkit.git
 cd RpgMakerMCP
 npm install
+npm run build
 ```
 
-#### 2. Configurar variables de entorno
+### Configuración
 
-Copia `.env.example` a `.env` y configura la ruta a tu proyecto de RPG Maker MZ:
-
-```bash
-cp .env.example .env
-```
-
-Edita `.env`:
+Copia `.env.example` a `.env`:
 
 ```env
-RPGMAKER_PROJECT_PATH=/ruta/completa/a/tu/proyecto/rpg/maker/mz
-MCP_DEBUG=true
+# Obligatorio — ruta absoluta a la raíz de tu proyecto RPG Maker MZ
+RPGMAKER_PROJECT_PATH=C:\Users\tú\Documentos\MiJuego
+
+# Opcional — ruta al ejecutable RPG Maker MZ (para la herramienta launch-game)
+RPGMAKER_EXECUTABLE_PATH=C:\Program Files\RPG Maker MZ\RPGMakerMZ.exe
+
+# Opcional
+MCP_DEBUG=false
+LOG_LEVEL=info
+BACKUP_MAX_COUNT=10     # cuántos backups conservar por archivo JSON
 ```
 
-**Ejemplos de rutas:**
-
-- Linux/Mac: `/home/usuario/Documentos/MiJuego`
-- Windows: `C:\Users\usuario\Documentos\MiJuego`
-
-#### 3. Verificar la instalación
+### Ejecución
 
 ```bash
-npm run build
-npm start
+npm run dev    # desarrollo con recarga automática
+npm run build && npm start   # producción
 ```
 
-Si ves el mensaje `✓ MCP Server connected and ready`, todo está configurado correctamente.
+### Conexión con Claude Desktop
 
-### Uso
+```json
+{
+  "mcpServers": {
+    "rpgmaker": {
+      "command": "node",
+      "args": ["C:/ruta/a/RpgMakerMCP/dist/index.js"],
+      "env": {
+        "RPGMAKER_PROJECT_PATH": "C:/ruta/a/MiJuego"
+      }
+    }
+  }
+}
+```
 
-#### Modo Desarrollo
+### Herramientas disponibles
 
-Para desarrollo con recarga automática:
+#### Datos y sistema
+
+| Herramienta | Descripción |
+|---|---|
+| `health-check` | Comprueba que el servidor está activo |
+| `list-game-data` | Lista entidades por tipo con nombres e IDs |
+| `read-map` | Lee metadatos del mapa, lista de eventos y encuentros |
+| `get-change-history` | Consulta el historial de escrituras MCP |
+
+#### Personajes y enemigos
+
+| Herramienta | Campos clave |
+|---|---|
+| `edit-actor` | `actor_id?` · `name` · `nickname` · `class_id` · `initial_level` · `max_level` |
+| `edit-enemy` | `enemy_id?` · `name` · `gold` · `exp` |
+
+#### Equipamiento e ítems
+
+| Herramienta | Campos clave |
+|---|---|
+| `edit-item` | `item_id?` · `name` · `description` · `price` · `icon_index` |
+| `edit-weapon` | `weapon_id?` · `name` · `wtype_id` · bonificaciones de estadísticas |
+| `edit-armor` | `armor_id?` · `name` · `atype_id` · bonificaciones de estadísticas |
+
+Bonificaciones de estadísticas: `max_hp` · `max_mp` · `attack` · `defense` · `magic_attack` · `magic_defense` · `agility` · `luck`
+
+#### Habilidades, clases y estados
+
+| Herramienta | Campos clave |
+|---|---|
+| `edit-skill` | `skill_id?` · `name` · `mp_cost` · `tp_cost` · `scope` · `damage_type` |
+| `edit-class` | `class_id?` · `name` · parámetros de experiencia |
+| `edit-state` | `state_id?` · `name` · `restriction` · `priority` · duraciones |
+
+#### Mapas y eventos
+
+| Herramienta | Campos clave |
+|---|---|
+| `create-map-event` | `map_id` · `event_name` · `x` · `y` · `event_type` · `pages` |
+| `add-dialogue` | `dialogue_lines` · `event_name?` |
+| `create-dialogue-advanced` | `dialogue_name` · `dialogue_nodes` (árbol con opciones y condiciones) |
+| `story-generator` | `story_title` · `scenes` (historia multi-escena completa) |
+
+#### Plugins
+
+| Herramienta | Descripción |
+|---|---|
+| `create-plugin` | Plugin básico con plantillas de código |
+| `create-plugin-advanced` | Plugin avanzado con plantillas especializadas |
+| `setup-debug-plugin` | Instala el plugin de debug para control de batallas |
+
+#### Backups
+
+`manage-backups` — acciones: `list` · `restore` · `delete` · `prune`
+
+Los backups se crean automáticamente antes de cada escritura. `BACKUP_MAX_COUNT` controla cuántos se conservan (por defecto 10).
+
+#### Operaciones en lote
+
+`batch-edit` — ejecuta hasta 50 operaciones en una sola llamada MCP. Devuelve resultados individuales. Usa `stop_on_error: true` para detener en el primer error.
+
+```json
+{
+  "operations": [
+    { "tool": "edit-actor", "input": { "actor_id": 1, "name": "Aria" } },
+    { "tool": "edit-weapon", "input": { "weapon_id": 3, "attack": 45 } }
+  ]
+}
+```
+
+### Tests
 
 ```bash
-npm run dev
+npm test               # ejecutar todos los tests
+npm run test:coverage  # con informe de cobertura
 ```
 
-#### Modo Producción
+163 tests en 8 suites.
 
-Compilar a JavaScript y ejecutar:
+### Solución de problemas
 
-```bash
-npm run build
-npm start
-```
-
-### Estructura de Proyecto
-
-```
-RpgMakerMCP/
-├── src/
-│   ├── index.ts              # Servidor MCP principal
-│   ├── config/               # Configuración (próximamente)
-│   ├── tools/                # Herramientas MCP
-│   ├── rpgmaker/             # Lectores/escritores de datos RPG Maker
-│   └── types/                # Definiciones TypeScript
-├── package.json
-├── tsconfig.json
-├── .env                      # Variables de entorno (local)
-├── .env.example              # Template de variables
-└── README.md
-```
-
-### Herramientas Disponibles
-
-#### `health-check`
-
-Verifica que el servidor MCP esté funcionando correctamente.
-
-```
-Input: (ninguno)
-Output: Estado del servidor, ruta del proyecto, timestamp
-```
-
-#### `list-game-data`
-
-Lista todos los tipos de datos disponibles en el proyecto RPG Maker.
-
-```
-Input: data_type (enum: Actors, Classes, Skills, etc.)
-Output: Información del tipo de dato, cantidad, vista previa
-```
-
-#### `edit-actor`
-
-Crear o editar un actor (personaje jugable).
-
-```
-Input: actor_id (opcional), name, nickname, class_id, etc.
-Output: Mensaje de éxito con ID del actor
-```
-
-#### `edit-item`
-
-Crear o editar un item.
-
-```
-Input: item_id (opcional), name, description, price
-Output: Mensaje de éxito con ID del item
-```
-
-#### `edit-enemy`
-
-Crear o editar un enemigo.
-
-```
-Input: enemy_id (opcional), name, gold, exp
-Output: Mensaje de éxito con ID del enemigo
-```
-
-#### `create-plugin`
-
-Crear un plugin JavaScript básico.
-
-```
-Input: plugin_name, description, author, version, code_type
-Output: Mensaje de éxito con nombre de archivo y ruta
-```
-
-#### `add-dialogue`
-
-Agregar diálogo simple a un evento común.
-
-```
-Input: dialogue_lines (array), event_name (opcional)
-Output: Mensaje de éxito con ID del evento
-```
-
-#### `create-plugin-advanced`
-
-Crear plugins avanzados con plantillas.
-
-```
-Input: plugin_name, description, author, version, template_type
-Output: Mensaje de éxito con nombre de archivo
-```
-
-#### `create-dialogue-advanced`
-
-Crear sistemas de diálogo ramificados.
-
-```
-Input: dialogue_name, dialogue_nodes (array)
-Output: Mensaje de éxito con ID del evento común
-```
-
-#### `create-map-event`
-
-Crear eventos en mapas (NPCs, cofres, triggers).
-
-```
-Input: map_id, event_name, x, y, event_type, etc.
-Output: Mensaje de éxito con ID del evento
-```
-
-#### `story-generator`
-
-Generar historias completas con escenas y eventos.
-
-```
-Input: story_title, story_description, scenes (array)
-Output: Mensaje de éxito con detalles de la historia
-```
-
-- ✅ Generador de plugins sofisticados
-- ✅ Sistema de diálogos ramificados
-- ✅ Generador de eventos de mapa
-- ✅ Generador de narrativa (escenas complejas)
-
-### Fase 4: Testing & Integración
-
-- Tests automatizados
-- Validación con proyecto real
-- Documentación de herramientas
-
-## Solución de Problemas
-
-### Error: "RPGMAKER_PROJECT_PATH is not set"
-
-**Solución:** Configura la variable `RPGMAKER_PROJECT_PATH` en `.env` con la ruta correcta a tu proyecto.
-
-### Error: "RPG Maker project path does not exist"
-
-**Solución:** Verifica que la ruta en `.env` sea correcta y que el directorio exista.
-
-### Error: "RPG Maker data directory not found"
-
-**Solución:** Asegúrate de que el proyecto es RPG Maker MZ (debe tener una carpeta `data/` en la raíz).
-
-### El servidor se congela o no responde
-
-**Solución:**
-
-1. Presiona `Ctrl+C` para detener
-2. Verifica que `RPGMAKER_PROJECT_PATH` sea accesible
-3. Reinicia con `npm run dev`
-
-## Contribuir
-
-Este es un proyecto en desarrollo. Las contribuciones son bienvenidas.
-
-## Licencia
-
-MIT
+| Error | Solución |
+|---|---|
+| `RPGMAKER_PROJECT_PATH is not set` | Configura la variable en `.env` |
+| `RPG Maker project path does not exist` | Verifica la ruta; en Windows usa barras `/` también |
+| `RPG Maker data directory not found` | La raíz del proyecto debe tener una carpeta `data/` |
+| `Invalid plugin filename` | Los nombres de plugin no pueden contener `<>:"/\|?*` ni separadores de ruta |
+| Server cuelgado | `Ctrl+C` → verifica que la ruta es accesible → reinicia con `npm run dev` |
 
 ---
 
-**¿Preguntas o problemas?** Revisa la documentación o contacta al desarrollador.
+## Contributing / Contribuir
 
----
+Pull requests are welcome. See [AGENTS.md](AGENTS.md) for architecture notes and conventions.
 
-Created by **Zagos**
+## License / Licencia
+
+MIT — Created by **Zagos**

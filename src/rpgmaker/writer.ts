@@ -9,6 +9,7 @@ export interface WriteOptions {
   projectPath: string;
   createBackup?: boolean;
   debug?: boolean;
+  maxBackups?: number;
 }
 
 type RPGDatabaseEntry = Record<string, unknown> & {
@@ -30,6 +31,7 @@ export class RPGMakerWriter {
   private backupPath: string;
   private createBackup: boolean;
   private debug: boolean;
+  private maxBackups: number;
 
   constructor(options: WriteOptions) {
     this.projectPath = options.projectPath;
@@ -37,6 +39,7 @@ export class RPGMakerWriter {
     this.backupPath = path.join(this.projectPath, "backups");
     this.createBackup = options.createBackup !== false;
     this.debug = options.debug || false;
+    this.maxBackups = options.maxBackups ?? 10;
 
     if (!fs.existsSync(this.dataPath)) {
       throw new Error(
@@ -61,9 +64,10 @@ export class RPGMakerWriter {
 
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const unique = Math.floor(Math.random() * 9000 + 1000).toString();
       const backupFile = path.join(
         this.backupPath,
-        `${filename.replace(".json", "")}_${timestamp}.json`
+        `${filename.replace(".json", "")}_${timestamp}_${unique}.json`
       );
 
       const content = fs.readFileSync(sourceFile, "utf-8");
@@ -72,6 +76,8 @@ export class RPGMakerWriter {
       if (this.debug) {
         console.log(`[DEBUG] Backup created: ${backupFile}`);
       }
+
+      this.pruneBackups(filename, this.maxBackups);
     } catch (error) {
       console.error(`Failed to create backup for ${filename}:`, error);
     }
@@ -143,6 +149,19 @@ export class RPGMakerWriter {
     // Escribe el archivo del mapa
     this.writeJsonFile(mapFilename, mapData);
 
+    // Validate mapInfo before writing (throws if invalid)
+    if (mapInfo !== undefined) {
+      const info = mapInfo as Record<string, unknown>;
+      const required = ["id", "name", "parentId", "order", "expanded", "scrollX", "scrollY"];
+      const missing = required.filter((k) => !(k in info));
+      if (missing.length > 0) {
+        throw new Error(`mapInfo is missing required fields: ${missing.join(", ")}`);
+      }
+      if (typeof info.id !== "number" || info.id !== mapId) {
+        throw new Error(`mapInfo.id must equal mapId (${mapId})`);
+      }
+    }
+
     // Actualiza MapInfos.json (asegura longitud y valor)
     const mapInfosPath = path.join(this.dataPath, "MapInfos.json");
     try {
@@ -162,7 +181,7 @@ export class RPGMakerWriter {
       }
 
       if (mapInfo !== undefined) {
-        mapInfos[mapId] = mapInfo as Record<string, unknown> | null;
+        mapInfos[mapId] = mapInfo as Record<string, unknown>;
       }
 
       this.writeJsonFile("MapInfos.json", mapInfos);
@@ -281,6 +300,104 @@ export class RPGMakerWriter {
     return newId;
   }
 
+  updateWeapon(weaponId: number, updates: Record<string, unknown>): void {
+    const weapons = this.readDatabaseArray("Weapons.json");
+    const idx = weapons.findIndex((w) => isDatabaseEntry(w) && w.id === weaponId);
+    if (idx === -1) throw new Error(`Weapon with ID ${weaponId} not found`);
+    weapons[idx] = { ...(weapons[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("Weapons.json", weapons);
+  }
+
+  addWeapon(weaponData: Record<string, unknown>): number {
+    const weapons = this.readDatabaseArray("Weapons.json");
+    const newId = this.getNextId(weapons);
+    weapons.push({ ...weaponData, id: newId });
+    this.writeJsonFile("Weapons.json", weapons);
+    return newId;
+  }
+
+  updateArmor(armorId: number, updates: Record<string, unknown>): void {
+    const armors = this.readDatabaseArray("Armors.json");
+    const idx = armors.findIndex((a) => isDatabaseEntry(a) && a.id === armorId);
+    if (idx === -1) throw new Error(`Armor with ID ${armorId} not found`);
+    armors[idx] = { ...(armors[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("Armors.json", armors);
+  }
+
+  addArmor(armorData: Record<string, unknown>): number {
+    const armors = this.readDatabaseArray("Armors.json");
+    const newId = this.getNextId(armors);
+    armors.push({ ...armorData, id: newId });
+    this.writeJsonFile("Armors.json", armors);
+    return newId;
+  }
+
+  updateSkill(skillId: number, updates: Record<string, unknown>): void {
+    const skills = this.readDatabaseArray("Skills.json");
+    const idx = skills.findIndex((s) => isDatabaseEntry(s) && s.id === skillId);
+    if (idx === -1) throw new Error(`Skill with ID ${skillId} not found`);
+    skills[idx] = { ...(skills[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("Skills.json", skills);
+  }
+
+  addSkill(skillData: Record<string, unknown>): number {
+    const skills = this.readDatabaseArray("Skills.json");
+    const newId = this.getNextId(skills);
+    skills.push({ ...skillData, id: newId });
+    this.writeJsonFile("Skills.json", skills);
+    return newId;
+  }
+
+  updateClass(classId: number, updates: Record<string, unknown>): void {
+    const classes = this.readDatabaseArray("Classes.json");
+    const idx = classes.findIndex((c) => isDatabaseEntry(c) && c.id === classId);
+    if (idx === -1) throw new Error(`Class with ID ${classId} not found`);
+    classes[idx] = { ...(classes[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("Classes.json", classes);
+  }
+
+  addClass(classData: Record<string, unknown>): number {
+    const classes = this.readDatabaseArray("Classes.json");
+    const newId = this.getNextId(classes);
+    classes.push({ ...classData, id: newId });
+    this.writeJsonFile("Classes.json", classes);
+    return newId;
+  }
+
+  updateState(stateId: number, updates: Record<string, unknown>): void {
+    const states = this.readDatabaseArray("States.json");
+    const idx = states.findIndex((s) => isDatabaseEntry(s) && s.id === stateId);
+    if (idx === -1) throw new Error(`State with ID ${stateId} not found`);
+    states[idx] = { ...(states[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("States.json", states);
+  }
+
+  addState(stateData: Record<string, unknown>): number {
+    const states = this.readDatabaseArray("States.json");
+    const newId = this.getNextId(states);
+    states.push({ ...stateData, id: newId });
+    this.writeJsonFile("States.json", states);
+    return newId;
+  }
+
+  pruneBackups(filename?: string, maxCount = 10): number {
+    const all = this.getBackups(filename);
+    const toDelete = all.slice(maxCount);
+    for (const f of toDelete) {
+      try { fs.unlinkSync(path.join(this.backupPath, f)); } catch { /* best-effort */ }
+    }
+    return toDelete.length;
+  }
+
+  deleteBackup(backupFilename: string): void {
+    if (path.basename(backupFilename) !== backupFilename || backupFilename.includes("..")) {
+      throw new Error("Invalid backup filename");
+    }
+    const backupFile = path.join(this.backupPath, backupFilename);
+    if (!fs.existsSync(backupFile)) throw new Error(`Backup not found: ${backupFilename}`);
+    fs.unlinkSync(backupFile);
+  }
+
   /**
    * Agrega un evento común
    */
@@ -318,6 +435,11 @@ export class RPGMakerWriter {
    * Restaura un archivo desde un backup
    */
   restoreFromBackup(backupFilename: string): void {
+    // Reject any path that tries to escape the backup directory
+    if (path.basename(backupFilename) !== backupFilename || backupFilename.includes("..")) {
+      throw new Error("Invalid backup filename");
+    }
+
     const backupFile = path.join(this.backupPath, backupFilename);
 
     if (!fs.existsSync(backupFile)) {
@@ -348,6 +470,15 @@ export class RPGMakerWriter {
    * Escribe un plugin JavaScript
    */
   writePlugin(filename: string, content: string): void {
+    const invalidChars = /[<>:"/\\|?*\x00-\x1f]/;
+    if (invalidChars.test(filename) || filename.includes("..") || path.basename(filename) !== filename) {
+      throw new Error(`Invalid plugin filename: '${filename}'. Must not contain special characters or path separators.`);
+    }
+    const reserved = /^(CON|PRN|AUX|NUL|COM\d|LPT\d)(\.|$)/i;
+    if (reserved.test(filename)) {
+      throw new Error(`Invalid plugin filename: '${filename}' is a reserved Windows name.`);
+    }
+
     const jsPath = path.join(this.projectPath, "js", "plugins");
 
     if (!fs.existsSync(jsPath)) {
@@ -371,19 +502,6 @@ export class RPGMakerWriter {
 
       if (this.debug) {
         console.log(`[DEBUG] Plugin written: ${pluginPath}`);
-      }
-
-      // Actualizar registro de plugins (plugins.js)
-      try {
-        const pluginName = filename.endsWith(".js") ? filename.replace(/\.js$/i, "") : filename;
-        this.updatePluginsRegistry({
-          name: pluginName,
-          status: true,
-          description: "",
-          parameters: {},
-        });
-      } catch (err) {
-        if (this.debug) console.error("Failed to update plugins registry:", err);
       }
     } catch (error) {
       throw new Error(

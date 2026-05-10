@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Compiled output
@@ -32,3 +31,11 @@ yarn-error.log*
 # Backups (RPG Maker)
 backup/
 *.bak
+
+# Claude Code (personal machine settings — team settings go in .claude/settings.json)
+.claude/
+
+# Planning / scratch docs
+opencode.json
+update/
+CLAUDE.md

@@ -109,6 +109,10 @@ export const CreateMapEventTool = {
           },
         },
       },
+      troop_id: {
+        type: "number",
+        description: "Troop ID to use for enemy battle events",
+      },
       dialogue: {
         type: "string",
         description: "Initial dialogue when interacting",

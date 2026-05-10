@@ -18,20 +18,37 @@ export class RPGMakerValidator {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (!actor.id || typeof actor.id !== "number") {
-      errors.push("Actor must have a numeric 'id'");
-    }
-
     if (!actor.name || typeof actor.name !== "string") {
       errors.push("Actor must have a 'name' property");
     }
 
-    if (!actor.classId || typeof actor.classId !== "number") {
-      warnings.push("Actor should have a valid 'classId'");
+    if (actor.classId !== undefined && typeof actor.classId !== "number") {
+      warnings.push("Actor 'classId' should be numeric");
     }
 
-    if (actor.initialLevel && typeof actor.initialLevel !== "number") {
+    if (actor.initialLevel !== undefined && typeof actor.initialLevel !== "number") {
       errors.push("Actor 'initialLevel' must be numeric");
+    }
+
+    if (
+      typeof actor.initialLevel === "number" &&
+      typeof actor.maxLevel === "number" &&
+      actor.initialLevel > actor.maxLevel
+    ) {
+      errors.push("Actor 'initialLevel' cannot be greater than 'maxLevel'");
+    }
+
+    if (actor.traits !== undefined && !Array.isArray(actor.traits)) {
+      errors.push("Actor 'traits' must be an array");
+    }
+
+    if (Array.isArray(actor.traits)) {
+      for (let i = 0; i < actor.traits.length; i++) {
+        const trait = actor.traits[i] as Record<string, unknown>;
+        if (typeof trait !== "object" || trait === null || typeof trait.code !== "number") {
+          errors.push(`Actor 'traits[${i}]' must be an object with a numeric 'code' field`);
+        }
+      }
     }
 
     return {
@@ -48,10 +65,6 @@ export class RPGMakerValidator {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (!item.id || typeof item.id !== "number") {
-      errors.push("Item must have a numeric 'id'");
-    }
-
     if (!item.name || typeof item.name !== "string") {
       errors.push("Item must have a 'name' property");
     }
@@ -62,6 +75,32 @@ export class RPGMakerValidator {
 
     if (typeof item.price === "number" && item.price < 0) {
       warnings.push("Item price should not be negative");
+    }
+
+    if (item.effects !== undefined && !Array.isArray(item.effects)) {
+      errors.push("Item 'effects' must be an array");
+    }
+
+    if (Array.isArray(item.effects)) {
+      for (let i = 0; i < item.effects.length; i++) {
+        const effect = item.effects[i] as Record<string, unknown>;
+        if (typeof effect !== "object" || effect === null) {
+          errors.push(`Item 'effects[${i}]' must be an object`);
+          continue;
+        }
+        if (typeof effect.code !== "number") {
+          errors.push(`Item 'effects[${i}]' must have a numeric 'code' field`);
+        }
+        if (effect.dataId !== undefined && typeof effect.dataId !== "number") {
+          errors.push(`Item 'effects[${i}].dataId' must be numeric`);
+        }
+        if (effect.value1 !== undefined && typeof effect.value1 !== "number") {
+          errors.push(`Item 'effects[${i}].value1' must be numeric`);
+        }
+        if (effect.value2 !== undefined && typeof effect.value2 !== "number") {
+          errors.push(`Item 'effects[${i}].value2' must be numeric`);
+        }
+      }
     }
 
     return {
@@ -78,16 +117,36 @@ export class RPGMakerValidator {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (!enemy.id || typeof enemy.id !== "number") {
-      errors.push("Enemy must have a numeric 'id'");
-    }
-
     if (!enemy.name || typeof enemy.name !== "string") {
       errors.push("Enemy must have a 'name' property");
     }
 
     if (!enemy.battlerName || typeof enemy.battlerName !== "string") {
       warnings.push("Enemy should have a 'battlerName' for graphics");
+    }
+
+    if (enemy.actions !== undefined && !Array.isArray(enemy.actions)) {
+      errors.push("Enemy 'actions' must be an array");
+    }
+
+    if (Array.isArray(enemy.actions)) {
+      const validConditionTypes = new Set([0, 1, 2, 3, 4, 5]);
+      for (let i = 0; i < enemy.actions.length; i++) {
+        const action = enemy.actions[i] as Record<string, unknown>;
+        if (typeof action !== "object" || action === null) {
+          errors.push(`Enemy 'actions[${i}]' must be an object`);
+          continue;
+        }
+        if (typeof action.skillId !== "number" || action.skillId < 1) {
+          errors.push(`Enemy 'actions[${i}].skillId' must be a positive number`);
+        }
+        if (action.conditionType !== undefined && !validConditionTypes.has(action.conditionType as number)) {
+          errors.push(`Enemy 'actions[${i}].conditionType' must be 0–5`);
+        }
+        if (action.rating !== undefined && (typeof action.rating !== "number" || (action.rating as number) < 1 || (action.rating as number) > 9)) {
+          warnings.push(`Enemy 'actions[${i}].rating' should be 1–9`);
+        }
+      }
     }
 
     return {
@@ -103,10 +162,6 @@ export class RPGMakerValidator {
   static validateSkill(skill: Record<string, unknown>): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
-
-    if (!skill.id || typeof skill.id !== "number") {
-      errors.push("Skill must have a numeric 'id'");
-    }
 
     if (!skill.name || typeof skill.name !== "string") {
       errors.push("Skill must have a 'name' property");
@@ -199,6 +254,35 @@ export class RPGMakerValidator {
       errors,
       warnings,
     };
+  }
+
+  /**
+   * Valida coordenadas de un evento de mapa dentro de los límites del mapa
+   */
+  static validateMapEvent(
+    event: { x: number; y: number; name?: string },
+    map: { width: number; height: number }
+  ): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (typeof event.x !== "number" || !Number.isInteger(event.x)) {
+      errors.push("MapEvent 'x' must be an integer");
+    } else if (event.x < 0 || event.x >= map.width) {
+      errors.push(`MapEvent 'x' (${event.x}) is out of map bounds [0, ${map.width - 1}]`);
+    }
+
+    if (typeof event.y !== "number" || !Number.isInteger(event.y)) {
+      errors.push("MapEvent 'y' must be an integer");
+    } else if (event.y < 0 || event.y >= map.height) {
+      errors.push(`MapEvent 'y' (${event.y}) is out of map bounds [0, ${map.height - 1}]`);
+    }
+
+    if (event.name !== undefined && typeof event.name !== "string") {
+      errors.push("MapEvent 'name' must be a string");
+    }
+
+    return { valid: errors.length === 0, errors, warnings };
   }
 
   /**
