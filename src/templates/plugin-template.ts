@@ -213,4 +213,260 @@ export const PluginTemplates = {
   console.log(\`[\${PLUGIN_NAME}] Loaded\`);
 })();`;
   },
+
+  // Template: Debug Bridge plugin (AI battle control via XHR)
+  debugBridge: (bridgePort = 9001): string => {
+    return `/*:
+ * @target MZ
+ * @plugindesc AI Debug Bridge - Enables AI control of battles
+ * @author MCP Server
+ * @version 1.4.0
+ *
+ * @help
+ * RPGMakerDebugger v1.4.0
+ *
+ * Uses XMLHttpRequest to communicate with the MCP server.
+ * Automatically starts a new game from the title screen.
+ *
+ * @command startBattle
+ * @text Start Battle
+ * @desc Start a battle with specified troop
+ *
+ * @arg troopId
+ * @text Troop ID
+ * @type number
+ * @default 1
+ */
+
+var RPGMakerDebugger = RPGMakerDebugger || {};
+
+(function() {
+    "use strict";
+
+    var bridgeUrl = "http://127.0.0.1:${bridgePort}";
+    var battleLog = [];
+    var isInBattle = false;
+    var battleComplete = false;
+    var pollTimer = null;
+    var gameReady = false;
+    var autoNewGameDone = false;
+
+    // --- Network helpers ---
+
+    function xhrGet(url, callback) {
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.timeout = 10000;
+            xhr.onload = function() { if (callback) callback(null, xhr.responseText); };
+            xhr.onerror = function() { if (callback) callback("error", null); };
+            xhr.ontimeout = function() { if (callback) callback("timeout", null); };
+            xhr.send();
+        } catch (e) { if (callback) callback(e.message, null); }
+    }
+
+    function xhrPost(url, data) {
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", url, false);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.send(JSON.stringify(data));
+        } catch (e) {}
+    }
+
+    // --- Auto New Game from Title Screen ---
+
+    function doAutoNewGame() {
+        if (autoNewGameDone) return;
+        if (!SceneManager._scene) { setTimeout(doAutoNewGame, 200); return; }
+        if (SceneManager._scene instanceof Scene_Title) {
+            autoNewGameDone = true;
+            setTimeout(function() {
+                if (SceneManager._scene instanceof Scene_Title) {
+                    SceneManager._scene.commandNewGame();
+                }
+            }, 400);
+        }
+    }
+
+    var _SceneTitle_create = Scene_Title.prototype.create;
+    Scene_Title.prototype.create = function() {
+        _SceneTitle_create.call(this);
+        doAutoNewGame();
+    };
+
+    // Detect when map scene becomes active (game world ready)
+    var _SceneMap_start = Scene_Map.prototype.start;
+    Scene_Map.prototype.start = function() {
+        _SceneMap_start.call(this);
+        gameReady = true;
+    };
+
+    // --- Poll loop ---
+
+    function poll() {
+        xhrGet(bridgeUrl + "/ping", function(err, response) {
+            if (!err) {
+                if (response && response.length > 0) {
+                    try {
+                        var cmd = JSON.parse(response);
+                        if (cmd.command === "start_battle") {
+                            startBattle(Number(cmd.troopId) || 1);
+                        }
+                    } catch (e) {}
+                }
+            }
+            pollTimer = setTimeout(poll, 500);
+        });
+    }
+
+    // --- Battle logic ---
+
+    function startBattle(troopId) {
+        if (!gameReady) {
+            logAndReport({type:"error", message:"Game world not ready yet"});
+            return;
+        }
+        if (isInBattle) {
+            logAndReport({type:"error", message:"Already in battle"});
+            return;
+        }
+
+        battleLog = [];
+        isInBattle = true;
+        battleComplete = false;
+
+        var troop = $dataTroops[troopId];
+        if (!troop) {
+            logAndReport({type:"error", message:"Troop " + troopId + " not found"});
+            isInBattle = false;
+            reportState();
+            return;
+        }
+
+        var enemyNames = [];
+        if (troop.members) {
+            for (var i = 0; i < troop.members.length; i++) {
+                var ed = $dataEnemies[troop.members[i].enemyId];
+                enemyNames.push(ed ? ed.name : "Enemy " + troop.members[i].enemyId);
+            }
+        }
+        logAndReport({type:"battle_start", troopId: troopId, enemies: enemyNames});
+
+        BattleManager.setup(troopId, true, false);
+        BattleManager.setEventCallback(function() {});
+        SceneManager.push(Scene_Battle);
+        xhrPost(bridgeUrl + "/state", { inBattle: true, battleOver: false, turn: 0, actors: [], enemies: [] });
+    }
+
+    // Poll for battle end
+    function runBattle() {
+        if (!isInBattle) return;
+        if (BattleManager._phase === null) {
+            var result = BattleManager._result || "win";
+            isInBattle = false;
+            battleComplete = true;
+            logAndReport({type:"battle_end", result: result});
+            reportState();
+            return;
+        }
+        setTimeout(runBattle, 200);
+    }
+
+    function finishBattle(result) {
+        isInBattle = false;
+        battleComplete = true;
+        logAndReport({type:"battle_end", result: result});
+        reportState();
+    }
+
+    function logAndReport(entry) {
+        battleLog.push(entry);
+        xhrPost(bridgeUrl + "/log", entry);
+    }
+
+    function reportState() {
+        var state = {
+            inBattle: isInBattle,
+            battleOver: battleComplete,
+            turn: $gameTroop ? ($gameTroop._turnCount || 0) : 0,
+            actors: [],
+            enemies: []
+        };
+        try {
+            if ($gameParty) {
+                $gameParty.members().forEach(function(a) {
+                    state.actors.push({
+                        name: a.name(), hp: a.hp, mhp: a.mhp, mp: a.mp, mmp: a.mmp,
+                        states: a.states().map(function(s) { return s.name; })
+                    });
+                });
+            }
+        } catch (e) {}
+        try {
+            if ($gameTroop) {
+                $gameTroop.members().forEach(function(e) {
+                    state.enemies.push({
+                        name: e.name(), hp: e.hp, mhp: e.mhp, mp: e.mp, mmp: e.mmp,
+                        states: e.states().map(function(s) { return s.name; })
+                    });
+                });
+            }
+        } catch (e) {}
+        xhrPost(bridgeUrl + "/state", state);
+    }
+
+    // --- Hooks ---
+
+    var _bmEnd = BattleManager.endBattle;
+    BattleManager.endBattle = function(result) {
+        finishBattle(result);
+        _bmEnd.call(this, result);
+    };
+
+    // Auto-battle: override makeActions to always use Attack on first enemy
+    var _actorMakeActions = Game_Actor.prototype.makeActions;
+    Game_Actor.prototype.makeActions = function() {
+        _actorMakeActions.call(this);
+        if (isInBattle && this.canMove() && this._actions.length > 0) {
+            var action = new Game_Action(this);
+            action.setAttack();
+            var targets = $gameTroop.aliveMembers();
+            if (targets.length > 0) {
+                action.setTarget(targets[0].index());
+            }
+            this._actions[0] = action;
+            this.setActionState("waiting");
+        }
+    };
+
+    var _gaApply = Game_Action.prototype.apply;
+    Game_Action.prototype.apply = function(target) {
+        var subject = this.subject();
+        var item = this.item();
+        var hpBefore = target ? target.hp : 0;
+        _gaApply.call(this, target);
+        if (target && subject && isInBattle) {
+            var hpDamage = hpBefore - target.hp;
+            battleLog.push({
+                type: "action",
+                subject: subject ? subject.name() : "unknown",
+                action: item ? item.name : "Attack",
+                target: target.name(),
+                hpDamage: Math.max(0, hpDamage),
+                hpBefore: hpBefore, hpAfter: target.hp,
+                alive: target.hp > 0,
+                critical: item && item.damage ? this.isCritical() : false,
+                formula: item && item.damage ? (item.damage.formula || "") : "",
+                turn: $gameTroop ? ($gameTroop._turnCount || 0) : 0
+            });
+        }
+    };
+
+    // Start battle polling after a short delay for the scene to load
+    setTimeout(runBattle, 500);
+
+    poll();
+})();`;
+  },
 };

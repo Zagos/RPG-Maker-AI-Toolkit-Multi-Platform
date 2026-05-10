@@ -38,10 +38,12 @@ export interface Story {
 export class StoryManager {
   private story: Story;
   private currentScene: StoryScene | null;
+  private visitedSceneIds: Set<string> = new Set();
 
   constructor(story: Story) {
     this.story = story;
     this.currentScene = this.getScene(story.currentSceneId);
+    if (this.currentScene) this.visitedSceneIds.add(story.currentSceneId);
   }
 
   /**
@@ -95,6 +97,7 @@ export class StoryManager {
         if (nextScene) {
           this.currentScene = nextScene;
           this.story.currentSceneId = branch.nextScene;
+          this.visitedSceneIds.add(branch.nextScene);
           return true;
         }
       }
@@ -139,7 +142,7 @@ export class StoryManager {
 
     return {
       totalScenes: this.story.scenes.length,
-      visitedScenes: 1, // Simplificado
+      visitedScenes: this.visitedSceneIds.size,
       totalEvents,
       completedEvents,
       percentage: Math.round((completedEvents / totalEvents) * 100),
