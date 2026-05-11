@@ -6,7 +6,7 @@ Guide for AI agents (and human contributors) working on this codebase.
 
 ## Project at a glance
 
-An MCP server written in **TypeScript ESM** (Node 20+, `"type": "module"`, `.js` extensions in all imports). It exposes ~23 tools that read and write RPG Maker MZ project JSON files. Each tool call is stateless — the server creates a fresh Reader/Writer per call.
+An MCP server written in **TypeScript ESM** (Node 20+, `"type": "module"`, `.js` extensions in all imports). It exposes 31 tools that read and write RPG Maker MZ project JSON files, plus a runtime control bridge for live game manipulation. Each tool call is stateless — the server creates a fresh Reader/Writer per call.
 
 Key invariants:
 - **Never throw from a handler** — always return `JSON.stringify({ error: … })`.
@@ -24,6 +24,7 @@ src/handlers/
   registry.ts                ← TOOL_HANDLERS map (all tools except batch-edit)
   types.ts                   ← HandlerContext interface
   batch-edit.ts              ← imports registry.ts (no circular dep)
+  debug.ts                   ← runtime control: launch, battle, save/load, party state, suite
   actor.ts / item.ts / …     ← one handler file per tool group
 src/rpgmaker/
   reader.ts                  ← read-only JSON helpers
@@ -151,6 +152,7 @@ Persisted to `<projectPath>/mcp-changes.json`. The `append` method is best-effor
 - Always `afterEach(() => fs.rmSync(dir, { recursive: true, force: true }))`.
 - Test files live in `tests/rpgmaker/`. The vitest config picks up `tests/**/*.test.ts`.
 - Coverage excludes `src/index.ts`, `src/tools/**`, `src/templates/**` (schema/config files).
+- Handlers with internal `setTimeout` sleeps (e.g. `run-battle-suite`) need `vi.useFakeTimers()` + `vi.runAllTimersAsync()` to avoid multi-second test runs. Always call `vi.useRealTimers()` in a `finally` block to prevent leaking into other tests.
 
 ```bash
 npm test                  # run once

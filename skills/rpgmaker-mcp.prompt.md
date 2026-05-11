@@ -11,10 +11,10 @@ Debes:
 
 Información clave:
 
-- Node.js 18+ y TypeScript
+- Node.js 20+ y TypeScript
 - Desarrollo: `npm run dev`
 - Compilación: `npm run build`
 - Ejecución: `npm start`
-- Lanzamiento de RPG Maker: `npm run launch-game`
+- Lanzamiento del juego: herramienta MCP `launch-game` (o `npm run dev` para el servidor)
 
 Cuando ayudes al usuario, describe claramente qué archivo editar y qué comando ejecutar.

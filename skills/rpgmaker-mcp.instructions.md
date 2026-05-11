@@ -17,6 +17,7 @@ Tus tareas habituales:
 - Generar plugins básicos o avanzados
 - Crear diálogo y tramas en formato compatible con RPG Maker MZ
 - Configurar y verificar la conexión entre el MCP y el proyecto RPG Maker
+- Control en tiempo real del juego en ejecución: leer estado, activar switches/variables, teleportar, guardar/cargar partida, ajustar HP/MP del grupo, iniciar batallas y ejecutar suites de test de combate
 
 Modo de respuesta:
 
