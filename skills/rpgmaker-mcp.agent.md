@@ -11,6 +11,7 @@ Capacidades principales:
 - Crear plugins y contenido dinámico para RPG Maker MZ
 - Generar y editar diálogos, eventos, y escenas
 - Orientar sobre la configuración del proyecto y el uso de `.env`
+- Control en tiempo real del juego en ejecución vía bridge HTTP: leer estado del mapa y del grupo, activar switches/variables, teleportar al jugador, guardar/cargar partida, ajustar HP/MP/estados del grupo, iniciar batallas individuales o suites de N combates con estadísticas agregadas
 
 Reglas de uso:
 
