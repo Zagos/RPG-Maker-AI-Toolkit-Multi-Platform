@@ -23,7 +23,7 @@ export const LaunchGameTool = {
 
 export const StartEncounterTool = {
   name: "start-encounter",
-  description: "Connects to the running game via the debug plugin, starts a battle with the specified enemy/troop, waits for it to complete using the real game engine, and returns a detailed battle log with damage formulas.",
+  description: "Connects to the running game via the debug plugin, starts a battle with the specified enemy/troop, waits for it to complete using the real game engine, and returns a detailed battle log with damage formulas. Use set-party-state first to configure HP/MP/states.",
   inputSchema: {
     type: "object" as const,
     properties: {
@@ -38,6 +38,23 @@ export const StartEncounterTool = {
       count: {
         type: "number",
         description: "Number of enemies (default: 1, only used with enemy_id)",
+      },
+      actions: {
+        type: "array",
+        description: "Per-turn action plan. Each element is an array of actor instructions for that turn. If a turn is missing or a specific actor has no instruction, falls back to auto-attack.",
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              actor_id: { type: "number", description: "Actor ID (1-based). Omit to apply to all actors in that turn." },
+              type: { type: "string", enum: ["attack", "guard", "skill", "item"], description: "Action type" },
+              skill_id: { type: "number", description: "Skill ID (required when type is 'skill')" },
+              item_id: { type: "number", description: "Item ID (required when type is 'item')" },
+            },
+            required: ["type"],
+          },
+        },
       },
     },
   },

@@ -27,6 +27,23 @@ export interface EncounterResult {
   summary?: string;
 }
 
+export interface PartyMemberState {
+  name: string;
+  hp: number;
+  mhp: number;
+  level: number;
+}
+
+export interface GameState {
+  mapId: number;
+  playerX: number;
+  playerY: number;
+  gold: number;
+  partyMembers: PartyMemberState[];
+  inBattle: boolean;
+  timestamp: string;
+}
+
 interface PendingCommand {
   command: string;
   args: Record<string, unknown>;
@@ -37,6 +54,8 @@ export class RPGMakerDebugBridge {
   private events: BattleLogEntry[] = [];
   private finalState: BattleState | null = null;
   private gameConnected = false;
+  private gameState: GameState | null = null;
+  private ackResolvers: Array<(value: boolean) => void> = [];
 
   setCommand(cmd: string, args: Record<string, unknown>): void {
     this.pendingCmd = { command: cmd, args };
@@ -58,6 +77,21 @@ export class RPGMakerDebugBridge {
 
   setFinalState(state: BattleState): void {
     this.finalState = state;
+  }
+
+  setGameState(state: GameState): void {
+    this.gameState = state;
+  }
+
+  getGameState(): GameState | null {
+    return this.gameState;
+  }
+
+  resolveAck(): void {
+    // Clear before resolving so the very next /ping returns nothing
+    this.clearCommand();
+    const resolver = this.ackResolvers.shift();
+    if (resolver) resolver(true);
   }
 
   markConnected(): void {
@@ -83,6 +117,36 @@ export class RPGMakerDebugBridge {
       await new Promise((r) => setTimeout(r, 200));
     }
     return { success: false, log: this.events, summary: "Battle timed out" };
+  }
+
+  async waitForGameState(timeout = 10000): Promise<GameState> {
+    this.gameState = null;
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      if (this.gameState) {
+        // Clear so the next /ping returns nothing (prevent re-execution)
+        this.clearCommand();
+        return this.gameState;
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    this.clearCommand();
+    throw new Error("Timed out waiting for game state");
+  }
+
+  async waitForAck(timeout = 10000): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        const idx = this.ackResolvers.indexOf(resolve);
+        if (idx !== -1) this.ackResolvers.splice(idx, 1);
+        resolve(false);
+      }, timeout);
+
+      this.ackResolvers.push((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      });
+    });
   }
 
   private generateSummary(state: BattleState): string {

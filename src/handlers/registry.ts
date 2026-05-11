@@ -7,7 +7,7 @@ import { handleCreatePlugin, handleCreatePluginAdvanced, handleSetupDebugPlugin 
 import { handleAddDialogue, handleCreateDialogueAdvanced } from "./dialogue.js";
 import { handleCreateMapEvent } from "./map-event.js";
 import { handleStoryGenerator } from "./story.js";
-import { handleLaunchGame, handleStartEncounter } from "./debug.js";
+import { handleLaunchGame, handleStartEncounter, handleGetGameState, handleSetSwitch, handleSetVariable, handleTeleportPlayer, handleSaveGame, handleLoadGame, handleSetPartyState, handleRunBattleSuite } from "./debug.js";
 import { handleEditWeapon } from "./weapon.js";
 import { handleEditArmor } from "./armor.js";
 import { handleEditSkill } from "./skill.js";
@@ -33,6 +33,14 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "setup-debug-plugin": handleSetupDebugPlugin,
   "launch-game": handleLaunchGame,
   "start-encounter": handleStartEncounter,
+  "get-game-state": handleGetGameState,
+  "set-switch": handleSetSwitch,
+  "set-variable": handleSetVariable,
+  "teleport-player": handleTeleportPlayer,
+  "save-game": handleSaveGame,
+  "load-game": handleLoadGame,
+  "set-party-state": handleSetPartyState,
+  "run-battle-suite": handleRunBattleSuite,
   "edit-weapon": handleEditWeapon,
   "edit-armor": handleEditArmor,
   "edit-skill": handleEditSkill,
