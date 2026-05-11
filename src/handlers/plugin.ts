@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import { RPGMakerValidator } from "../rpgmaker/validator.js";
 import { PluginTemplates } from "../templates/plugin-template.js";
@@ -171,7 +172,7 @@ export async function handleCreatePluginAdvanced(ctx: HandlerContext): Promise<s
 }
 
 export async function handleSetupDebugPlugin(ctx: HandlerContext): Promise<string> {
-  const { writer } = ctx;
+  const { writer, projectPath } = ctx;
 
   try {
     const pluginCode = PluginTemplates.debugBridge(BRIDGE_PORT);
@@ -181,19 +182,65 @@ export async function handleSetupDebugPlugin(ctx: HandlerContext): Promise<strin
       return JSON.stringify({ error: "Plugin validation failed", errors: validation.errors });
     }
 
+    const pluginsJsPath = path.join(projectPath, "js", "plugins.js");
+    let existingContent = "";
+    try { existingContent = fs.readFileSync(pluginsJsPath, "utf-8"); } catch { /* new project */ }
+    const alreadyRegistered = existingContent.includes('"RPGMakerDebugger"');
+
+    // Write and register the debug plugin (status: true — it is intentionally being activated)
     const filename = "RPGMakerDebugger.js";
     writer.writePlugin(filename, pluginCode);
-    registerPlugin(writer, filename, "AI Debug Bridge for battle control");
-    ctx.changeLog.append({ tool: "setup-debug-plugin", entityType: "Plugin", action: "create", summary: `Debug bridge plugin '${filename}' created on port ${BRIDGE_PORT}` });
+    registerPlugin(writer, filename, "AI Debug Bridge - MCP runtime control");
+
+    // Scan js/plugins/ and register any other .js files that are not yet in plugins.js
+    // so they appear in the RPG Maker Plugin Manager (status: false — user opts in)
+    const pluginsFolderPath = path.join(projectPath, "js", "plugins");
+    const newlyRegistered: string[] = [];
+    try {
+      const files = fs.readdirSync(pluginsFolderPath).filter((f) => f.endsWith(".js"));
+      // Re-read plugins.js after we just wrote it to get the current registered names
+      let currentContent = "";
+      try { currentContent = fs.readFileSync(pluginsJsPath, "utf-8"); } catch { /* ignore */ }
+
+      for (const file of files) {
+        const pluginName = file.replace(/\.js$/i, "");
+        if (pluginName === "RPGMakerDebugger") continue; // already registered above
+        if (currentContent.includes(`"${pluginName}"`)) continue; // already in registry
+
+        writer.updatePluginsRegistry({
+          name: pluginName,
+          status: false,
+          description: "",
+          parameters: {},
+        });
+        // Update currentContent for next iteration check
+        try { currentContent = fs.readFileSync(pluginsJsPath, "utf-8"); } catch { /* ignore */ }
+        newlyRegistered.push(pluginName);
+      }
+    } catch { /* folder doesn't exist or unreadable — skip */ }
+
+    const action = alreadyRegistered ? "update" : "create";
+    ctx.changeLog.append({
+      tool: "setup-debug-plugin",
+      entityType: "Plugin",
+      action,
+      summary: `Debug bridge plugin installed on port ${BRIDGE_PORT}; synced ${newlyRegistered.length} additional plugins`,
+    });
 
     return JSON.stringify({
       success: true,
-      message: "Debug plugin created and enabled",
+      message: alreadyRegistered
+        ? `Debug plugin updated (port ${BRIDGE_PORT})`
+        : `Debug plugin installed (port ${BRIDGE_PORT})`,
       filename,
-      instructions:
-        "1. The plugin is now in js/plugins/RPGMakerDebugger.js and registered in js/plugins.js\n" +
-        "2. Launch the game (press Play in RPG Maker editor)\n" +
-        "3. Use the \"start-encounter\" tool to trigger a battle",
+      port: BRIDGE_PORT,
+      synced_plugins: newlyRegistered,
+      instructions: [
+        "1. Close and reopen the project in RPG Maker MZ editor (so it picks up the changes)",
+        "2. Open Plugin Manager — RPGMakerDebugger is enabled; other plugins appear disabled (activate as needed)",
+        "3. Press Play (F5) to launch the game",
+        "4. Use 'start-encounter' or other runtime tools — the game connects automatically",
+      ].join("\n"),
     });
   } catch (error) {
     return JSON.stringify({ error: (error as Error).message });

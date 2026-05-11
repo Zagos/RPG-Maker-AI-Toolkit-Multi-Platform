@@ -39,3 +39,6 @@ backup/
 opencode.json
 update/
 CLAUDE.md
+
+# Local development utilities
+dev/

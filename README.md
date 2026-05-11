@@ -1,6 +1,6 @@
 # RPG Maker MCP
 
-**Model Context Protocol server for RPG Maker MZ** — lets any MCP-compatible AI (Claude, GPT, etc.) read and write your game project directly.
+**Model Context Protocol server for RPG Maker MZ** — lets any MCP-compatible AI (Claude, GPT, etc.) read and write your game project directly, and control the running game in real time.
 
 > Available in [English](#english) · [Español](#español)
 
@@ -11,6 +11,8 @@
 ### What it does
 
 RPG Maker MCP exposes your RPG Maker MZ project as a set of tools that an AI assistant can call. Instead of describing what you want and then copy-pasting JSON by hand, you just ask the AI and it reads/writes the project files for you — with automatic backups, validation, and a full change log.
+
+It also includes a **runtime control bridge**: install a lightweight plugin in your game once, and the AI can read game state, flip switches, set variables, teleport the player, and trigger battles while the game is actually running.
 
 ### Requirements
 
@@ -83,9 +85,10 @@ Add this block to `claude_desktop_config.json`:
 ```
 RpgMakerMCP/
 ├── src/
-│   ├── index.ts               # Server entry point, tool registry
+│   ├── index.ts               # Server entry point, tool registry, HTTP bridge
 │   ├── handlers/              # One file per tool group
 │   │   ├── registry.ts        # TOOL_HANDLERS routing map
+│   │   ├── debug.ts           # Runtime control handlers
 │   │   ├── actor.ts / item.ts / enemy.ts …
 │   │   ├── batch-edit.ts      # Batch dispatcher
 │   │   └── types.ts           # HandlerContext interface
@@ -93,13 +96,16 @@ RpgMakerMCP/
 │   │   ├── reader.ts          # JSON read helpers
 │   │   ├── writer.ts          # JSON write + backup + prune
 │   │   ├── validator.ts       # Input validation
+│   │   ├── debug-bridge.ts    # Runtime bridge (commands, ack, game state)
 │   │   ├── change-log.ts      # mcp-changes.json audit log
 │   │   ├── commands.ts        # Event command builders
 │   │   ├── story-manager.ts
 │   │   └── dialogue-manager.ts
+│   ├── templates/
+│   │   └── plugin-template.ts # RPGMakerDebugger plugin generator (v2)
 │   ├── tools/                 # Zod/JSON schema definitions (one per tool)
 │   └── types/                 # RPG Maker MZ TypeScript interfaces
-├── tests/                     # Vitest test suite (163 tests)
+├── tests/                     # Vitest test suite (250 tests, 10 suites)
 ├── scripts/                   # launch-rpgmaker.js helper
 ├── skills/                    # Claude Code slash-command skills
 ├── .env.example
@@ -183,9 +189,49 @@ Stat bonus fields (weapons & armors): `max_hp` · `max_mp` · `attack` · `defen
 |---|---|
 | `create-plugin` | `plugin_name` · `description` · `author` · `version` · `code_type (empty\|simple-hook\|command\|skill-modifier)` |
 | `create-plugin-advanced` | `plugin_name` · `template_type (with-parameters\|game-actor\|game-enemy\|event-handler\|custom-ui)` |
-| `setup-debug-plugin` | *(no input)* — installs the AI debug bridge plugin |
+| `setup-debug-plugin` | *(no input)* — installs the runtime bridge plugin and registers all existing plugins |
+
+`setup-debug-plugin` writes `RPGMakerDebugger.js` into `js/plugins/`, registers it in `plugins.js` (enabled), and also registers any other `.js` files already in the folder (disabled) so they appear in the Plugin Manager. Safe to call multiple times — existing plugins are never overwritten.
 
 Plugin filenames are sanitized on write: names with `<>:"/\|?*`, path separators, or Windows reserved names (CON, NUL, COM1…) are rejected.
+
+---
+
+#### Runtime Control
+
+These tools control the **running game** in real time. They require:
+1. `setup-debug-plugin` called once on the project
+2. The plugin enabled in the RPG Maker MZ Plugin Manager
+3. The game running (press Play / F5)
+
+The plugin polls the MCP server every 500 ms via HTTP. All commands are confirmed with an ACK before the tool returns.
+
+| Tool | Description |
+|---|---|
+| `launch-game` | Launch the RPG Maker MZ executable |
+| `get-game-state` | Read current map, player position, party HP/levels, gold |
+| `set-switch` | Turn a game switch ON or OFF (`id`, `value`) |
+| `set-variable` | Assign a value to a game variable (`id`, `value`) |
+| `teleport-player` | Move the player to any map and coordinates (`map_id`, `x`, `y`, `direction?`) |
+| `save-game` | Save to a slot (`slot`, default 98 — recommended for test snapshots) |
+| `load-game` | Load from a slot (`slot`, default 98) — waits for the map to reload before returning |
+| `set-party-state` | Set HP/MP % and add/remove status effects for one actor or the whole party |
+| `start-encounter` | Trigger a battle (`troop_id` or `enemy_id` + `count` + optional `actions` turn plan) |
+| `run-battle-suite` | Run the same battle N times and return aggregated stats: win rate, avg HP, damage dealt/taken |
+
+**Typical workflow:**
+
+```
+1. setup-debug-plugin          ← install once per project
+2. launch-game                 ← start the game
+3. get-game-state              ← confirm connection and read initial state
+4. set-switch / set-variable   ← configure game flags for the scenario to test
+5. teleport-player             ← jump to the area under test
+6. set-party-state             ← configure party HP/MP/states for the scenario
+7. start-encounter             ← run a battle and get the full log
+8. run-battle-suite            ← repeat N times for statistical analysis
+9. save-game / load-game       ← snapshot and restore state for reproduction
+```
 
 ---
 
@@ -212,19 +258,10 @@ Executes multiple tool calls in a single MCP round-trip. Each operation runs in 
   "operations": [
     { "tool": "edit-actor", "input": { "actor_id": 1, "name": "Aria" } },
     { "tool": "edit-item",  "input": { "name": "Mana Potion", "price": 150 } },
-    { "tool": "edit-skill", "input": { "skill_id": 5, "mp_cost": 20 } }
+    { "tool": "set-switch", "input": { "id": 5, "value": true } }
   ]
 }
 ```
-
----
-
-#### Debug / Battle
-
-| Tool | Description |
-|---|---|
-| `launch-game` | Launch the RPG Maker MZ executable |
-| `start-encounter` | Trigger a battle via the debug bridge (requires `setup-debug-plugin` first) |
 
 ---
 
@@ -248,7 +285,7 @@ npm run test:watch        # watch mode
 npm run test:coverage     # with v8 coverage report
 ```
 
-163 tests across 8 suites (writer, commands, validator, story-manager, dialogue-manager, phase3, phase4, phase5).
+250 tests across 10 suites (writer, commands, validator, story-manager, dialogue-manager, debug-bridge, plugin-integration, phase3, phase4, phase5).
 
 ---
 
@@ -261,6 +298,8 @@ npm run test:coverage     # with v8 coverage report
 | `RPG Maker data directory not found` | The project root must contain a `data/` folder |
 | `Invalid plugin filename` | Plugin names must not contain `<>:"/\|?*` or path separators |
 | `mapInfo is missing required fields` | Pass all 7 fields when providing mapInfo to `create-map-event` |
+| `Game not connected` | Launch the game with the RPGMakerDebugger plugin enabled; wait for the map to load |
+| Runtime tool times out | The game may be on the title screen — enter the map first; or the plugin is not enabled |
 | Server hangs | `Ctrl+C`, verify the project path is accessible, restart with `npm run dev` |
 
 ---
@@ -270,6 +309,8 @@ npm run test:coverage     # with v8 coverage report
 ### Qué hace
 
 RPG Maker MCP expone tu proyecto de RPG Maker MZ como un conjunto de herramientas que un asistente IA puede llamar. En lugar de describir lo que quieres y copiar JSON a mano, simplemente pides al agente que lo haga — con backups automáticos, validación y un historial de cambios completo.
+
+También incluye un **bridge de control en tiempo real**: instala un plugin ligero en tu juego una vez y el agente puede leer el estado del juego, activar switches, cambiar variables, teleportar al jugador y desencadenar batallas mientras el juego está corriendo.
 
 ### Requisitos
 
@@ -378,7 +419,43 @@ Bonificaciones de estadísticas: `max_hp` · `max_mp` · `attack` · `defense` �
 |---|---|
 | `create-plugin` | Plugin básico con plantillas de código |
 | `create-plugin-advanced` | Plugin avanzado con plantillas especializadas |
-| `setup-debug-plugin` | Instala el plugin de debug para control de batallas |
+| `setup-debug-plugin` | Instala el plugin de bridge en tiempo real y registra todos los plugins existentes |
+
+`setup-debug-plugin` escribe `RPGMakerDebugger.js` en `js/plugins/`, lo registra en `plugins.js` (activado) y también registra los demás `.js` ya existentes en la carpeta (desactivados) para que aparezcan en el Plugin Manager. Se puede llamar varias veces — nunca sobreescribe plugins existentes.
+
+#### Control en tiempo real
+
+Estas herramientas controlan el **juego en ejecución**. Requieren:
+1. `setup-debug-plugin` llamado una vez en el proyecto
+2. El plugin activado en el Plugin Manager de RPG Maker MZ
+3. El juego en ejecución (pulsar Play / F5)
+
+| Herramienta | Descripción |
+|---|---|
+| `launch-game` | Lanza el ejecutable de RPG Maker MZ |
+| `get-game-state` | Lee mapa actual, posición del jugador, HP/nivel del grupo, oro |
+| `set-switch` | Activa o desactiva un switch del juego (`id`, `value`) |
+| `set-variable` | Asigna un valor a una variable del juego (`id`, `value`) |
+| `teleport-player` | Mueve al jugador a cualquier mapa y coordenadas (`map_id`, `x`, `y`, `direction?`) |
+| `save-game` | Guarda en un slot (`slot`, por defecto 98 — recomendado para snapshots de test) |
+| `load-game` | Carga desde un slot (`slot`, por defecto 98) — espera a que el mapa recargue antes de devolver |
+| `set-party-state` | Ajusta HP/MP % y añade/quita estados a un actor o a todo el grupo |
+| `start-encounter` | Inicia una batalla (`troop_id` o `enemy_id` + `count` + `actions` opcional con plan de turnos) |
+| `run-battle-suite` | Corre la misma batalla N veces y devuelve estadísticas agregadas: win rate, HP medio, daño infligido/recibido |
+
+**Flujo típico:**
+
+```
+1. setup-debug-plugin          ← instalar una vez por proyecto
+2. launch-game                 ← iniciar el juego
+3. get-game-state              ← verificar conexión y leer estado inicial
+4. set-switch / set-variable   ← configurar flags para el escenario a probar
+5. teleport-player             ← saltar al área bajo prueba
+6. set-party-state             ← configurar HP/MP/estados del grupo
+7. start-encounter             ← ejecutar batalla y obtener el log completo
+8. run-battle-suite            ← repetir N veces para análisis estadístico
+9. save-game / load-game       ← guardar y restaurar estado para reproducción
+```
 
 #### Backups
 
@@ -393,8 +470,9 @@ Los backups se crean automáticamente antes de cada escritura. `BACKUP_MAX_COUNT
 ```json
 {
   "operations": [
-    { "tool": "edit-actor", "input": { "actor_id": 1, "name": "Aria" } },
-    { "tool": "edit-weapon", "input": { "weapon_id": 3, "attack": 45 } }
+    { "tool": "edit-actor",   "input": { "actor_id": 1, "name": "Aria" } },
+    { "tool": "edit-weapon",  "input": { "weapon_id": 3, "attack": 45 } },
+    { "tool": "set-switch",   "input": { "id": 10, "value": true } }
   ]
 }
 ```
@@ -406,7 +484,7 @@ npm test               # ejecutar todos los tests
 npm run test:coverage  # con informe de cobertura
 ```
 
-163 tests en 8 suites.
+250 tests en 10 suites.
 
 ### Solución de problemas
 
@@ -416,13 +494,15 @@ npm run test:coverage  # con informe de cobertura
 | `RPG Maker project path does not exist` | Verifica la ruta; en Windows usa barras `/` también |
 | `RPG Maker data directory not found` | La raíz del proyecto debe tener una carpeta `data/` |
 | `Invalid plugin filename` | Los nombres de plugin no pueden contener `<>:"/\|?*` ni separadores de ruta |
+| `Game not connected` | Lanza el juego con el plugin RPGMakerDebugger activado; espera a que cargue el mapa |
+| Tool de runtime agota el tiempo | El juego puede estar en la pantalla de título — entra al mapa primero |
 | Server cuelgado | `Ctrl+C` → verifica que la ruta es accesible → reinicia con `npm run dev` |
 
 ---
 
 ## Contributing / Contribuir
 
-Pull requests are welcome. See [AGENTS.md](AGENTS.md) for architecture notes and conventions.
+Pull requests are welcome. See [CLAUDE.md](CLAUDE.md) for architecture notes and conventions.
 
 ## License / Licencia
 

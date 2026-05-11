@@ -13,7 +13,7 @@ type ZodTypeAny = z.ZodTypeAny;
 import { RPGMakerReader } from "./rpgmaker/reader.js";
 import { RPGMakerWriter } from "./rpgmaker/writer.js";
 import { RPGMakerDebugBridge } from "./rpgmaker/debug-bridge.js";
-import type { BattleState } from "./rpgmaker/debug-bridge.js";
+import type { BattleState, GameState } from "./rpgmaker/debug-bridge.js";
 import { ChangeLog } from "./rpgmaker/change-log.js";
 
 // Tool definitions
@@ -27,6 +27,14 @@ import { CreateDialogueTool } from "./tools/create-dialogue-advanced.js";
 import { CreateMapEventTool } from "./tools/create-map-event.js";
 import { StoryGeneratorTool } from "./tools/story-generator.js";
 import { SetupDebugPluginTool, LaunchGameTool, StartEncounterTool } from "./tools/battle-debug.js";
+import { GetGameStateTool } from "./tools/get-game-state.js";
+import { SetSwitchTool } from "./tools/set-switch.js";
+import { SetVariableTool } from "./tools/set-variable.js";
+import { TeleportPlayerTool } from "./tools/teleport-player.js";
+import { SaveGameTool } from "./tools/save-game.js";
+import { LoadGameTool } from "./tools/load-game.js";
+import { SetPartyStateTool } from "./tools/set-party-state.js";
+import { RunBattleSuiteTool } from "./tools/run-battle-suite.js";
 import { EditWeaponTool } from "./tools/edit-weapon.js";
 import { EditArmorTool } from "./tools/edit-armor.js";
 import { EditSkillTool } from "./tools/edit-skill.js";
@@ -169,6 +177,14 @@ const tools: Tool[] = [
   SetupDebugPluginTool,
   LaunchGameTool,
   StartEncounterTool,
+  GetGameStateTool,
+  SetSwitchTool,
+  SetVariableTool,
+  TeleportPlayerTool,
+  SaveGameTool,
+  LoadGameTool,
+  SetPartyStateTool,
+  RunBattleSuiteTool,
   EditWeaponTool,
   EditArmorTool,
   EditSkillTool,
@@ -267,7 +283,7 @@ async function main() {
       return;
     }
 
-    if (req.method === "POST" && (url === "/log" || url === "/state")) {
+    if (req.method === "POST" && (url === "/log" || url === "/state" || url === "/gamestate" || url === "/ack")) {
       let body = "";
       req.on("data", (c) => (body += c));
       req.on("end", () => {
@@ -275,9 +291,13 @@ async function main() {
           const data = JSON.parse(body);
           if (url === "/log") {
             debugBridge.addEvent(data);
-          } else {
+          } else if (url === "/state") {
             const state = data as BattleState;
             if (!state.inBattle || state.battleOver) debugBridge.setFinalState(state);
+          } else if (url === "/gamestate") {
+            debugBridge.setGameState(data as GameState);
+          } else if (url === "/ack") {
+            debugBridge.resolveAck();
           }
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ status: "ok" }));
