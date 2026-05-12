@@ -7,7 +7,7 @@ import { handleCreatePlugin, handleCreatePluginAdvanced, handleSetupDebugPlugin 
 import { handleAddDialogue, handleCreateDialogueAdvanced } from "./dialogue.js";
 import { handleCreateMapEvent } from "./map-event.js";
 import { handleStoryGenerator } from "./story.js";
-import { handleLaunchGame, handleStartEncounter, handleGetGameState, handleSetSwitch, handleSetVariable, handleTeleportPlayer, handleSaveGame, handleLoadGame, handleSetPartyState, handleRunBattleSuite } from "./debug.js";
+import { handleLaunchGame, handleStartEncounter, handleGetGameState, handleSetSwitch, handleSetVariable, handleTeleportPlayer, handleSaveGame, handleLoadGame, handleSetPartyState, handleRunBattleSuite, handleExecuteScript, handleShowMessage } from "./debug.js";
 import { handleEditWeapon } from "./weapon.js";
 import { handleEditArmor } from "./armor.js";
 import { handleEditSkill } from "./skill.js";
@@ -21,6 +21,12 @@ import { handleEditMap } from "./map-edit.js";
 import { handleEditSystem } from "./system.js";
 import { handleManageBackups } from "./backup.js";
 import { handleGetChangeHistory } from "./change-history.js";
+import { handleListMaps } from "./map-list.js";
+import { handleDeleteMap } from "./map-delete.js";
+import { handleEditMapEvent, handleDeleteMapEvent } from "./map-event-edit.js";
+import { handleManagePlugins } from "./manage-plugins.js";
+import { handleReadEntity } from "./read-entity.js";
+import { handleEditTileset } from "./tileset.js";
 
 // All tool handlers except batch-edit (to avoid circular imports)
 export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
@@ -61,4 +67,13 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "edit-system": handleEditSystem,
   "manage-backups": handleManageBackups,
   "get-change-history": handleGetChangeHistory,
+  "list-maps": handleListMaps,
+  "delete-map": handleDeleteMap,
+  "edit-map-event": handleEditMapEvent,
+  "delete-map-event": handleDeleteMapEvent,
+  "manage-plugins": handleManagePlugins,
+  "read-entity": handleReadEntity,
+  "execute-script": handleExecuteScript,
+  "show-message": handleShowMessage,
+  "edit-tileset": handleEditTileset,
 };
