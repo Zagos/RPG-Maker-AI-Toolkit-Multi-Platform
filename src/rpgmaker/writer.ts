@@ -380,6 +380,22 @@ export class RPGMakerWriter {
     return newId;
   }
 
+  addTroop(troopData: Record<string, unknown>): number {
+    const troops = this.readDatabaseArray("Troops.json");
+    const newId = this.getNextId(troops);
+    troops.push({ ...troopData, id: newId });
+    this.writeJsonFile("Troops.json", troops);
+    return newId;
+  }
+
+  updateTroop(troopId: number, updates: Record<string, unknown>): void {
+    const troops = this.readDatabaseArray("Troops.json");
+    const idx = troops.findIndex((t) => isDatabaseEntry(t) && t.id === troopId);
+    if (idx === -1) throw new Error(`Troop with ID ${troopId} not found`);
+    troops[idx] = { ...(troops[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("Troops.json", troops);
+  }
+
   pruneBackups(filename?: string, maxCount = 10): number {
     const all = this.getBackups(filename);
     const toDelete = all.slice(maxCount);

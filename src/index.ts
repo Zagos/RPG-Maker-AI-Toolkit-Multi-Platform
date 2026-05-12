@@ -41,6 +41,8 @@ import { EditSkillTool } from "./tools/edit-skill.js";
 import { EditClassTool } from "./tools/edit-class.js";
 import { EditStateTool } from "./tools/edit-state.js";
 import { ReadMapTool } from "./tools/read-map.js";
+import { CreateMapTool } from "./tools/create-map.js";
+import { CreateTroopTool, EditTroopTool } from "./tools/troop.js";
 import { ManageBackupsTool } from "./tools/manage-backups.js";
 import { BatchEditTool } from "./tools/batch-edit.js";
 
@@ -191,6 +193,9 @@ const tools: Tool[] = [
   EditClassTool,
   EditStateTool,
   ReadMapTool,
+  CreateMapTool,
+  CreateTroopTool,
+  EditTroopTool,
   ManageBackupsTool,
   BatchEditTool,
   {

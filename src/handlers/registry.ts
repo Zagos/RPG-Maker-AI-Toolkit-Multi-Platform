@@ -14,6 +14,8 @@ import { handleEditSkill } from "./skill.js";
 import { handleEditClass } from "./class.js";
 import { handleEditState } from "./state.js";
 import { handleReadMap } from "./map-read.js";
+import { handleCreateMap } from "./map-create.js";
+import { handleCreateTroop, handleEditTroop } from "./troop.js";
 import { handleManageBackups } from "./backup.js";
 import { handleGetChangeHistory } from "./change-history.js";
 
@@ -47,6 +49,9 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "edit-class": handleEditClass,
   "edit-state": handleEditState,
   "read-map": handleReadMap,
+  "create-map": handleCreateMap,
+  "create-troop": handleCreateTroop,
+  "edit-troop": handleEditTroop,
   "manage-backups": handleManageBackups,
   "get-change-history": handleGetChangeHistory,
 };
