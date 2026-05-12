@@ -16,6 +16,9 @@ import { handleEditState } from "./state.js";
 import { handleReadMap } from "./map-read.js";
 import { handleCreateMap } from "./map-create.js";
 import { handleCreateTroop, handleEditTroop } from "./troop.js";
+import { handleCreateCommonEvent, handleEditCommonEvent } from "./common-event.js";
+import { handleEditMap } from "./map-edit.js";
+import { handleEditSystem } from "./system.js";
 import { handleManageBackups } from "./backup.js";
 import { handleGetChangeHistory } from "./change-history.js";
 
@@ -52,6 +55,10 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "create-map": handleCreateMap,
   "create-troop": handleCreateTroop,
   "edit-troop": handleEditTroop,
+  "create-common-event": handleCreateCommonEvent,
+  "edit-common-event": handleEditCommonEvent,
+  "edit-map": handleEditMap,
+  "edit-system": handleEditSystem,
   "manage-backups": handleManageBackups,
   "get-change-history": handleGetChangeHistory,
 };

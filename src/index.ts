@@ -43,6 +43,9 @@ import { EditStateTool } from "./tools/edit-state.js";
 import { ReadMapTool } from "./tools/read-map.js";
 import { CreateMapTool } from "./tools/create-map.js";
 import { CreateTroopTool, EditTroopTool } from "./tools/troop.js";
+import { CreateCommonEventTool, EditCommonEventTool } from "./tools/common-event.js";
+import { EditMapTool } from "./tools/edit-map.js";
+import { EditSystemTool } from "./tools/edit-system.js";
 import { ManageBackupsTool } from "./tools/manage-backups.js";
 import { BatchEditTool } from "./tools/batch-edit.js";
 
@@ -196,6 +199,10 @@ const tools: Tool[] = [
   CreateMapTool,
   CreateTroopTool,
   EditTroopTool,
+  CreateCommonEventTool,
+  EditCommonEventTool,
+  EditMapTool,
+  EditSystemTool,
   ManageBackupsTool,
   BatchEditTool,
   {
