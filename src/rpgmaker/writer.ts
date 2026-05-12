@@ -380,6 +380,14 @@ export class RPGMakerWriter {
     return newId;
   }
 
+  updateCommonEvent(eventId: number, updates: Record<string, unknown>): void {
+    const events = this.readDatabaseArray("CommonEvents.json");
+    const idx = events.findIndex((e) => isDatabaseEntry(e) && e.id === eventId);
+    if (idx === -1) throw new Error(`Common event with ID ${eventId} not found`);
+    events[idx] = { ...(events[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("CommonEvents.json", events);
+  }
+
   addTroop(troopData: Record<string, unknown>): number {
     const troops = this.readDatabaseArray("Troops.json");
     const newId = this.getNextId(troops);
