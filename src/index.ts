@@ -48,6 +48,14 @@ import { EditMapTool } from "./tools/edit-map.js";
 import { EditSystemTool } from "./tools/edit-system.js";
 import { ManageBackupsTool } from "./tools/manage-backups.js";
 import { BatchEditTool } from "./tools/batch-edit.js";
+import { ListMapsTool } from "./tools/list-maps.js";
+import { DeleteMapTool } from "./tools/delete-map.js";
+import { EditMapEventTool, DeleteMapEventTool } from "./tools/edit-map-event.js";
+import { ManagePluginsTool } from "./tools/manage-plugins.js";
+import { ReadEntityTool } from "./tools/read-entity.js";
+import { ExecuteScriptTool } from "./tools/execute-script.js";
+import { ShowMessageTool } from "./tools/show-message.js";
+import { EditTilesetTool } from "./tools/edit-tileset.js";
 
 // Handlers
 import type { HandlerContext } from "./handlers/types.js";
@@ -205,6 +213,15 @@ const tools: Tool[] = [
   EditSystemTool,
   ManageBackupsTool,
   BatchEditTool,
+  ListMapsTool,
+  DeleteMapTool,
+  EditMapEventTool,
+  DeleteMapEventTool,
+  ManagePluginsTool,
+  ReadEntityTool,
+  ExecuteScriptTool,
+  ShowMessageTool,
+  EditTilesetTool,
   {
     name: "get-change-history",
     description: "Read the MCP change log. Returns a newest-first list of all tool calls that modified RPG Maker project data.",

@@ -257,6 +257,46 @@ export async function handleSaveGame(ctx: HandlerContext): Promise<string> {
   }
 }
 
+export async function handleExecuteScript(ctx: HandlerContext): Promise<string> {
+  const { input, debugBridge, changeLog } = ctx;
+  if (!debugBridge.connected) return notConnected();
+
+  const code = (input.code as string | undefined)?.trim();
+  if (!code) return JSON.stringify({ error: "code is required" });
+
+  const timeout = (input.timeout as number | undefined) ?? 5000;
+
+  try {
+    debugBridge.setCommand("execute_script", { code });
+    const ok = await debugBridge.waitForAck(timeout);
+    if (!ok) return JSON.stringify({ error: "Timed out waiting for game to confirm script execution" });
+    changeLog.append({ tool: "execute-script", entityType: "Script", action: "update", summary: `Script executed: ${code.slice(0, 80)}` });
+    return JSON.stringify({ success: true, code });
+  } catch (error) {
+    return JSON.stringify({ error: (error as Error).message });
+  }
+}
+
+export async function handleShowMessage(ctx: HandlerContext): Promise<string> {
+  const { input, debugBridge, changeLog } = ctx;
+  if (!debugBridge.connected) return notConnected();
+
+  const text = (input.text as string | undefined)?.trim();
+  if (!text) return JSON.stringify({ error: "text is required" });
+
+  const speaker = (input.speaker as string | undefined) ?? "";
+
+  try {
+    debugBridge.setCommand("show_message", { text, speaker });
+    const ok = await debugBridge.waitForAck(10000);
+    if (!ok) return JSON.stringify({ error: "Timed out waiting for game to confirm show_message" });
+    changeLog.append({ tool: "show-message", entityType: "Message", action: "update", summary: `Message shown: "${text.slice(0, 60)}"` });
+    return JSON.stringify({ success: true, text, speaker });
+  } catch (error) {
+    return JSON.stringify({ error: (error as Error).message });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // run-battle-suite
 // ---------------------------------------------------------------------------

@@ -406,6 +406,23 @@ var RPGMakerDebugger = RPGMakerDebugger || {};
                     }
                     ack();
                     break;
+                case "execute_script":
+                    try {
+                        // eslint-disable-next-line no-eval
+                        var scriptResult = eval(String(cmd.code));
+                        xhrPost(bridgeUrl + "/log", { type: "script_result", result: String(scriptResult) });
+                    } catch (scriptErr) {
+                        xhrPost(bridgeUrl + "/log", { type: "script_error", error: String(scriptErr) });
+                    }
+                    ack();
+                    break;
+                case "show_message":
+                    if ($gameMessage) {
+                        if (cmd.speaker) $gameMessage.setSpeakerName(String(cmd.speaker));
+                        $gameMessage.add(String(cmd.text));
+                    }
+                    ack();
+                    break;
             }
         } catch (e) {
             xhrPost(bridgeUrl + "/log", { type: "error", command: cmd.command, message: String(e) });

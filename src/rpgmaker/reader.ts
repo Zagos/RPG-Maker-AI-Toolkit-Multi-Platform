@@ -197,6 +197,39 @@ export class RPGMakerReader {
     return states.find((s) => s && s.id === id) || null;
   }
 
+  readTroops(): Array<Record<string, unknown>> {
+    try {
+      const data = this.readJsonFile("Troops.json") as Array<Record<string, unknown> | null>;
+      return data.filter((t): t is Record<string, unknown> => t !== null);
+    } catch { return []; }
+  }
+
+  readTroop(id: number): Record<string, unknown> | null {
+    return this.readTroops().find((t) => t.id === id) ?? null;
+  }
+
+  readCommonEvents(): Array<Record<string, unknown>> {
+    try {
+      const data = this.readJsonFile("CommonEvents.json") as Array<Record<string, unknown> | null>;
+      return data.filter((e): e is Record<string, unknown> => e !== null);
+    } catch { return []; }
+  }
+
+  readCommonEvent(id: number): Record<string, unknown> | null {
+    return this.readCommonEvents().find((e) => e.id === id) ?? null;
+  }
+
+  readTilesets(): Array<Record<string, unknown>> {
+    try {
+      const data = this.readJsonFile("Tilesets.json") as Array<Record<string, unknown> | null>;
+      return data.filter((t): t is Record<string, unknown> => t !== null);
+    } catch { return []; }
+  }
+
+  readTileset(id: number): Record<string, unknown> | null {
+    return this.readTilesets().find((t) => t.id === id) ?? null;
+  }
+
   /**
    * Lee un mapa específico por ID
    */
