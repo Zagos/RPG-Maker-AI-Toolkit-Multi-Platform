@@ -56,6 +56,23 @@ import { ReadEntityTool } from "./tools/read-entity.js";
 import { ExecuteScriptTool } from "./tools/execute-script.js";
 import { ShowMessageTool } from "./tools/show-message.js";
 import { EditTilesetTool } from "./tools/edit-tileset.js";
+import { ReadMapTilesTool } from "./tools/read-map-tiles.js";
+import { PaintMapTilesTool } from "./tools/paint-map-tiles.js";
+import { FillMapRegionTool } from "./tools/fill-map-region.js";
+import { ReadTilesetTool } from "./tools/read-tileset.js";
+import { CreateTilesetTool } from "./tools/create-tileset.js";
+import { EditTilesetPropertiesTool } from "./tools/edit-tileset-properties.js";
+import { GenerateCharacterTool } from "./tools/generate-character.js";
+import { EditTraitsTool } from "./tools/edit-traits.js";
+import { PaintMapRegionTool } from "./tools/paint-map-region.js";
+import { EditTroopEventsTool } from "./tools/edit-troop-events.js";
+import { ListResourcesTool } from "./tools/list-resources.js";
+import { EditEffectsTool } from "./tools/edit-effects.js";
+import { EditEventPageTool } from "./tools/edit-event-page.js";
+import { EditPluginParametersTool } from "./tools/edit-plugin-parameters.js";
+import { EditEnemyActionsTool } from "./tools/edit-enemy-actions.js";
+import { DeleteEntityTool } from "./tools/delete-entity.js";
+import { ReadAnimationTool, EditAnimationTool } from "./tools/animation.js";
 
 // Handlers
 import type { HandlerContext } from "./handlers/types.js";
@@ -222,6 +239,24 @@ const tools: Tool[] = [
   ExecuteScriptTool,
   ShowMessageTool,
   EditTilesetTool,
+  ReadMapTilesTool,
+  PaintMapTilesTool,
+  FillMapRegionTool,
+  ReadTilesetTool,
+  CreateTilesetTool,
+  EditTilesetPropertiesTool,
+  GenerateCharacterTool,
+  EditTraitsTool,
+  PaintMapRegionTool,
+  EditTroopEventsTool,
+  ListResourcesTool,
+  EditEffectsTool,
+  EditEventPageTool,
+  EditPluginParametersTool,
+  EditEnemyActionsTool,
+  DeleteEntityTool,
+  ReadAnimationTool,
+  EditAnimationTool,
   {
     name: "get-change-history",
     description: "Read the MCP change log. Returns a newest-first list of all tool calls that modified RPG Maker project data.",

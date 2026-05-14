@@ -127,6 +127,8 @@ All tools return JSON. `_id` fields are optional on input — omit them to **cre
 | `list-maps` | List all maps from MapInfos.json, sorted by display order |
 | `read-map` | Read map metadata, events list and encounter groups |
 | `read-entity` | Read a single entity by type and ID |
+| `list-resources` | List asset files in `img/` and `audio/` directories by category |
+| `delete-entity` | Null out an entity in its database array (soft-delete with backup) |
 | `get-change-history` | Query the audit log of all MCP writes |
 | `edit-system` | Edit global game settings: title, currency, party, start position, switch/variable names, audio |
 
@@ -135,6 +137,10 @@ All tools return JSON. `_id` fields are optional on input — omit them to **cre
 **`read-map`** — input: `map_id (number)`
 
 **`read-entity`** — `entity_type`: `Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `CommonEvent` · `entity_id (integer)`
+
+**`list-resources`** — `category`: `characters` · `faces` · `battlers` · `sv_actors` · `tilesets` · `parallaxes` · `pictures` · `bgm` · `bgs` · `se` · `me` · `all`. Returns filenames without extension. Call this before assigning sprite/audio names in other tools to avoid silent failures from missing assets.
+
+**`delete-entity`** — `entity_type (Actor|Item|Enemy|Weapon|Armor|Skill|Class|State|Troop|CommonEvent)` · `entity_id` · `confirm: true` (required guard). Creates a backup before nulling. The index slot is preserved — existing references remain pointing to a null entry, equivalent to the RPG Maker editor's delete behavior.
 
 **`get-change-history`** — filters: `limit` · `entity_type` · `tool` · `action (create|update|delete)` · `since (ISO 8601)`
 
@@ -146,8 +152,67 @@ All tools return JSON. `_id` fields are optional on input — omit them to **cre
 
 | Tool | Key inputs |
 |---|---|
+| `generate-character` | `name` · `archetype` · `nickname?` · `initial_level?` · `max_level?` · `character_name?` · `character_index?` · `face_name?` · `face_index?` · `profile?` · `note?` |
 | `edit-actor` | `actor_id?` · `name` · `nickname` · `class_id` · `initial_level` · `max_level` · `face_name` · `character_name` |
 | `edit-enemy` | `enemy_id?` · `name` · `gold` · `exp` |
+| `edit-enemy-actions` | `enemy_id` · `mode (replace\|append\|clear)` · `actions [{skill_id, rating, condition_type, condition_param1, condition_param2}]` |
+
+**`generate-character`** — Generates a complete actor from a high-level concept. Reads the project's classes, weapons, and armors and picks the best fit for the chosen archetype via keyword matching. Sprite and face sheet are auto-selected. Archetypes: `warrior` · `mage` · `rogue` · `healer` · `paladin` · `ranger`. Returns `{ actor_id, class_id, equips, sprite }`.
+
+**Archetype behavior:**
+
+| Archetype | Preferred class keywords | Weapon preference | Armor preference | Default sprite |
+|---|---|---|---|---|
+| `warrior` | warrior, fighter, knight | sword, axe, blade | heavy, plate, mail | Actor1 idx 0 |
+| `mage` | mage, wizard, sorcerer | staff, rod, wand | robe, cloth, mystic | Actor2 idx 0 |
+| `rogue` | rogue, thief, assassin | dagger, knife, claw | leather, light | Actor3 idx 0 |
+| `healer` | healer, cleric, priest | staff, mace, holy | robe, sacred | Actor2 idx 2 |
+| `paladin` | paladin, holy knight | sword, lance, blessed | heavy, holy, divine | Actor1 idx 2 |
+| `ranger` | ranger, archer, hunter | bow, crossbow, gun | leather, light | Actor3 idx 2 |
+
+**`edit-enemy-actions`** — Edits the AI action table of an enemy. Each action specifies which skill to use (`skill_id`), how often (`rating` 1–9), and under what condition (`condition_type`: 0=always, 1=turn X/Y, 2=HP≤%, 3=MP≤%, 4=state applied, 5=party level≥, 6=switch ON). `condition_param1`/`condition_param2` carry the threshold values.
+
+---
+
+#### Traits & Effects
+
+| Tool | Key inputs |
+|---|---|
+| `edit-traits` | `entity_type (Actor\|Class\|Enemy\|Weapon\|Armor\|State)` · `entity_id` · `mode (replace\|append\|clear)` · `traits [{code, data_id, value}]` |
+| `edit-effects` | `entity_type (Skill\|Item)` · `entity_id` · `mode (replace\|append\|clear)` · `effects [{code, data_id, value1, value2}]` |
+
+**`edit-traits`** — Structured editing of passive traits on any entity that carries them. `mode=replace` overwrites the full array; `mode=append` merges by `code`+`data_id` (upsert); `mode=clear` empties it.
+
+Common trait codes:
+
+| Code | Effect | Code | Effect |
+|---|---|---|---|
+| 11 | Element rate | 41 | Add skill type |
+| 12 | Debuff rate | 42 | Seal skill type |
+| 13 | State rate | 43 | Add skill |
+| 14 | State resist | 44 | Seal skill |
+| 21 | Parameter rate | 51 | Equip weapon type |
+| 22 | Ex-parameter (hit/evasion/crit) | 52 | Equip armor type |
+| 23 | Sp-parameter (target rate/guard) | 54 | Fix equip slot |
+| 31 | Attack element | 55 | Seal equip slot |
+| 32 | Attack state | 61 | Action plus |
+| 33 | Attack speed | 62 | Special flag |
+| | | 63 | Collapse type |
+| | | 64 | Party ability |
+
+**`edit-effects`** — Structured editing of use-effects on Skills and Items. `mode=append` adds to existing effects without deduplication.
+
+Common effect codes:
+
+| Code | Effect | Code | Effect |
+|---|---|---|---|
+| 11 | Recover HP (value1=rate, value2=flat) | 31 | Add buff (param, turns) |
+| 12 | Recover MP | 32 | Add debuff |
+| 13 | Gain TP | 33 | Remove buff |
+| 21 | Add state (data_id=stateId, value1=chance) | 34 | Remove debuff |
+| 22 | Remove state | 41 | Learn skill (data_id=skillId) |
+| | | 42 | Call common event (data_id=eventId) |
+| | | 44 | Gain exp |
 
 ---
 
@@ -184,6 +249,14 @@ Stat bonus fields (weapons & armors): `max_hp` · `max_mp` · `attack` · `defen
 
 **`edit-troop`** — Renames a troop or replaces its full member list. Provide at least one of `name` or `members`.
 
+| Tool | Key inputs |
+|---|---|
+| `edit-troop-events` | `troop_id` · `mode (replace_all\|append\|clear)` · `pages [{conditions, span, commands}]` |
+
+**`edit-troop-events`** — Add, replace, or clear battle event pages in a troop. Each page has trigger conditions and a command list using the same `{type, data}` format as `create-map-event`.
+
+Page conditions: `turnValid`+`turnA`+`turnB` (fire on turn A, A+B, A+2B…) · `enemyValid`+`enemyIndex`+`enemyHp` (enemy HP%) · `actorValid`+`actorId`+`actorHp` · `switchValid`+`switchId`. `span`: 0=once per battle, 1=once per turn, 2=each moment.
+
 ---
 
 #### Common Events
@@ -219,6 +292,10 @@ Stat bonus fields (weapons & armors): `max_hp` · `max_mp` · `attack` · `defen
 
 **`edit-map-event`** — Rename, move, or append commands to an existing event. `append_commands` inserts before the terminator on page 0. Command format: `{ type, data }` — types: `message` · `choice` · `wait` · `transfer` · `script` · `switch` · `variable` · `common-event` · `battle` · `animation`.
 
+| `edit-event-page` | `map_id` · `event_id` · `mode (add\|replace\|remove)` · `page_index?` · `page?` |
+
+**`edit-event-page`** — Add a new page to an existing map event, replace a specific page by index, or remove a page (minimum 1 page enforced). Used to build multi-state NPCs without recreating the entire event. Page fields: `trigger` (0–4) · `priority_type` (0–2) · `move_type` (0–3) · `move_speed` · `move_frequency` · `direction_fix` · `walk_anime` · `step_anime` · `through` · `character_name` · `character_index` · `conditions` (switches/variables/self-switch/actor/item) · `commands [{type, data}]`.
+
 **`delete-map-event`** — Nulls the event slot in the map's events array (non-destructive to surrounding events).
 
 `create-map-event` **event types:**
@@ -229,11 +306,41 @@ Stat bonus fields (weapons & armors): `max_hp` · `max_mp` · `attack` · `defen
 
 ---
 
+#### Map Tile Painting
+
+| Tool | Key inputs |
+|---|---|
+| `read-map-tiles` | `map_id` · `x?` · `y?` · `width?` · `height?` · `layers? [0-5]` |
+| `paint-map-tiles` | `map_id` · `tiles [{x, y, layer, tile_id}]` |
+| `fill-map-region` | `map_id` · `x` · `y` · `width` · `height` · `layer` · `tile_id` |
+| `paint-map-region` | `map_id` · `layer` · `x` · `y` · `width` · `height` · `tile_id` or `tiles [flat array]` |
+
+Tile index formula: `x + y × mapWidth + layer × mapWidth × mapHeight`. Layers: 0–3 = tile layers (0 = empty, valid IDs ≥ 2048), 4 = shadow flags (0–15), 5 = region ID (0–255).
+
+**`read-map-tiles`** — Returns tile IDs for every cell in the requested region. Optionally filter by layer. Useful for understanding the current tile layout before painting.
+
+**`paint-map-tiles`** — Applies an array of individual tile changes atomically (one file write). Invalid entries are skipped and returned as warnings. Layer max IDs: layers 0–3 → 0–8191, layer 4 → 0–15, layer 5 → 0–255.
+
+**`fill-map-region`** — Fills a rectangle with a single tile ID across any layer. `tile_id=0` clears the region. Clamped to map bounds.
+
+**`paint-map-region`** — Single-layer region paint with two modes: **fill** (`tile_id` — fills the entire rectangle with one tile) or **stamp** (`tiles` — flat row-major array of exactly `width×height` IDs). Stamp mode is the efficient path for placing pre-designed tile patterns like room templates or dungeon prefabs.
+
+---
+
 #### Tilesets
 
 | Tool | Key inputs |
 |---|---|
+| `read-tileset` | `tileset_id?` · `include_flags?` |
+| `create-tileset` | `name` · `mode?` · `tilesetNames? [9 entries]` |
+| `edit-tileset-properties` | `tileset_id` · `name?` · `mode?` · `tilesetNames? [9 entries]` |
 | `edit-tileset` | `tileset_id` · `flag_overrides [{tile_id, passable?, terrain_tag?}]` |
+
+**`read-tileset`** — Reads tileset metadata: name, mode, graphic file references (`tilesetNames` array of 9 slots: A1 A2 A3 A4 A5 B C D E), and a passability flag summary. Pass `include_flags: true` to get the full 8192-entry flags array. Omit `tileset_id` to list all tilesets.
+
+**`create-tileset`** — Creates a new tileset entry in `Tilesets.json`. All 8192 tile flags default to passable (0). `tilesetNames` is an array of 9 graphic file names (without extension) from `img/tilesets/`; omit for a blank tileset.
+
+**`edit-tileset-properties`** — Edits a tileset's display name, mode (`0`=World / `1`=Area), or the 9-slot `tilesetNames` graphic references. To edit passability and terrain tags use `edit-tileset`.
 
 **`edit-tileset`** — Modify the passability and terrain tag of one or more tiles in a tileset. Each entry in `flag_overrides` targets a single `tile_id` (0–8191). `passable: false` blocks all four directions; `terrain_tag` (0–7) is stored in bits 12–15 of the flag word.
 
@@ -253,6 +360,25 @@ Stat bonus fields (weapons & armors): `max_hp` · `max_mp` · `attack` · `defen
 **`manage-plugins`** — `list` returns all registered plugins with name/status/description. `enable`/`disable` toggle a plugin's active state. `delete` removes it from the registry and deletes the `.js` file if present.
 
 Plugin filenames are sanitized on write: names with `<>:"/\|?*`, path separators, or Windows reserved names (CON, NUL, COM1…) are rejected.
+
+| Tool | Key inputs |
+|---|---|
+| `edit-plugin-parameters` | `plugin_name` · `parameters {key: "value", …}` |
+
+**`edit-plugin-parameters`** — Update individual parameter values of a registered plugin. RPG Maker MZ stores all plugin parameter values as strings. Partial updates are supported — only the keys you provide are changed; all other parameters are preserved.
+
+---
+
+#### Animations
+
+| Tool | Key inputs |
+|---|---|
+| `read-animation` | `animation_id?` |
+| `edit-animation` | `animation_id` · `name?` · `effect_name?` · `display_type?` · `offset_x?` · `offset_y?` · `speed?` |
+
+**`read-animation`** — Returns the full animation object (name, effectName, displayType, flashTimings, soundTimings, offsetX/Y, speed) when `animation_id` is given. Omit to list all animations with id and name.
+
+**`edit-animation`** — Edits animation metadata. `effect_name` references an Effekseer `.efkefc` file from the `effects/` folder (without extension). `display_type`: 0=target head, 1=target center, 2=full screen, -1=front of screen. Full frame/timing editing is out of scope.
 
 ---
 
@@ -346,7 +472,7 @@ npm run test:watch        # watch mode
 npm run test:coverage     # with v8 coverage report
 ```
 
-357 tests across 20 suites.
+357 tests across 20 suites (coverage excludes `src/index.ts`, `src/tools/**`, `src/templates/**`).
 
 ---
 
@@ -439,9 +565,15 @@ npm run build && npm start   # producción
 | `list-game-data` | Lista entidades por tipo con nombres e IDs |
 | `list-maps` | Lista todos los mapas de MapInfos.json ordenados por posición de visualización |
 | `read-map` | Lee metadatos del mapa, lista de eventos y encuentros |
-| `read-entity` | Lee una entidad por tipo e ID (`Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `CommonEvent`) |
+| `read-entity` | Lee una entidad por tipo e ID |
+| `list-resources` | Lista archivos de assets en `img/` y `audio/` por categoría |
+| `delete-entity` | Anula una entidad en su array de base de datos (soft-delete con backup) |
 | `get-change-history` | Consulta el historial de escrituras MCP |
 | `edit-system` | Edita la configuración global: título, moneda, grupo inicial, posición de inicio, nombres de switches/variables, audio |
+
+**`list-resources`** — `category`: `characters` · `faces` · `battlers` · `sv_actors` · `tilesets` · `parallaxes` · `pictures` · `bgm` · `bgs` · `se` · `me` · `all`. Devuelve nombres de archivo sin extensión. Úsalo antes de asignar sprites/audio para evitar fallos silenciosos.
+
+**`delete-entity`** — `entity_type` · `entity_id` · `confirm: true` (obligatorio). Crea backup antes de anular. El índice se preserva — las referencias existentes quedan apuntando a null.
 
 **`edit-system`** — todos opcionales: `game_title` · `currency_unit` · `initial_party` · `start_map_id/x/y` · `switch_names {"id":"nombre"}` · `variable_names` · `title_bgm/battle_bgm/victory_me/defeat_me`
 
@@ -449,8 +581,28 @@ npm run build && npm start   # producción
 
 | Herramienta | Campos clave |
 |---|---|
+| `generate-character` | `name` · `archetype` · `nickname?` · `initial_level?` · `max_level?` · `character_name?` · `face_name?` · `profile?` |
 | `edit-actor` | `actor_id?` · `name` · `nickname` · `class_id` · `initial_level` · `max_level` |
 | `edit-enemy` | `enemy_id?` · `name` · `gold` · `exp` |
+
+**`generate-character`** — Genera un actor completo a partir de un concepto de alto nivel. Lee las clases, armas y armaduras del proyecto y elige las más adecuadas para el arquetipo indicado mediante coincidencia de palabras clave. El sprite y la cara se seleccionan automáticamente. Arquetipos: `warrior` · `mage` · `rogue` · `healer` · `paladin` · `ranger`. Devuelve `{ actor_id, class_id, equips, sprite }`.
+
+| `edit-enemy-actions` | `enemy_id` · `mode (replace\|append\|clear)` · `actions [{skill_id, rating, condition_type, condition_param1, condition_param2}]` |
+
+**`edit-enemy-actions`** — Edita la tabla de acciones (IA) de un enemigo. `rating` (1–9) = frecuencia relativa. `condition_type`: 0=siempre, 1=turno X/Y, 2=HP≤%, 3=MP≤%, 4=estado aplicado, 5=nivel grupo≥, 6=switch ON.
+
+---
+
+#### Traits y efectos
+
+| Herramienta | Campos clave |
+|---|---|
+| `edit-traits` | `entity_type (Actor\|Class\|Enemy\|Weapon\|Armor\|State)` · `entity_id` · `mode (replace\|append\|clear)` · `traits [{code, data_id, value}]` |
+| `edit-effects` | `entity_type (Skill\|Item)` · `entity_id` · `mode (replace\|append\|clear)` · `effects [{code, data_id, value1, value2}]` |
+
+**`edit-traits`** — Edita el array de traits de cualquier entidad que los tenga. `mode=append` hace merge por `code`+`data_id` (upsert). Códigos frecuentes: 11=tasa elemento, 13=tasa estado, 14=resistencia estado, 21=tasa parámetro, 31=elemento de ataque, 41=añadir tipo habilidad, 43=añadir habilidad, 51=equipar tipo arma.
+
+**`edit-effects`** — Edita los efectos de uso de habilidades e ítems. Códigos: 11=recuperar HP, 12=recuperar MP, 13=ganar TP, 21=añadir estado, 22=quitar estado, 31-34=buff/debuff, 41=aprender habilidad, 42=llamar evento común.
 
 #### Equipamiento e ítems
 
@@ -480,6 +632,10 @@ Bonificaciones de estadísticas: `max_hp` · `max_mp` · `attack` · `defense` �
 **`create-troop`** — Crea una nueva entrada en `Troops.json`. `members` requerido (1–8 enemigos). Si se omite `x`/`y`, los enemigos se distribuyen automáticamente en la pantalla de batalla. Devuelve `{ success, troop_id, name, member_count }`.
 
 **`edit-troop`** — Renombra una tropa o reemplaza su lista de miembros completa.
+
+| `edit-troop-events` | `troop_id` · `mode (replace_all\|append\|clear)` · `pages [{conditions, span, commands}]` |
+
+**`edit-troop-events`** — Gestiona páginas de eventos de batalla. Condiciones: `turnValid`+`turnA`+`turnB` · `enemyValid`+`enemyIndex`+`enemyHp` · `actorValid`+`actorId`+`actorHp` · `switchValid`+`switchId`. `span`: 0=una vez/batalla, 1=una vez/turno, 2=cada momento.
 
 #### Eventos comunes
 
@@ -512,13 +668,47 @@ Bonificaciones de estadísticas: `max_hp` · `max_mp` · `attack` · `defense` �
 
 **`edit-map-event`** — Renombra, mueve o añade comandos a un evento existente. `append_commands` inserta antes del terminador en la página 0. Formato: `{ type, data }` — tipos: `message` · `choice` · `wait` · `transfer` · `script` · `switch` · `variable` · `common-event` · `battle` · `animation`.
 
+| `edit-event-page` | `map_id` · `event_id` · `mode (add\|replace\|remove)` · `page_index?` · `page?` |
+
+**`edit-event-page`** — Añade, reemplaza o elimina páginas de un evento de mapa sin recrear el evento completo. Útil para NPCs multi-estado (progresión de misiones, día/noche, puertas bloqueadas). La página define trigger, sprite, movimiento, condiciones y comandos.
+
 **`delete-map-event`** — Pone null el slot del evento en el array de eventos del mapa.
+
+#### Pintura de tiles en mapas
+
+| Herramienta | Campos clave |
+|---|---|
+| `read-map-tiles` | `map_id` · `x?` · `y?` · `width?` · `height?` · `layers? [0-5]` |
+| `paint-map-tiles` | `map_id` · `tiles [{x, y, layer, tile_id}]` |
+| `fill-map-region` | `map_id` · `x` · `y` · `width` · `height` · `layer` · `tile_id` |
+| `paint-map-region` | `map_id` · `layer` · `x` · `y` · `width` · `height` · `tile_id` o `tiles [array plano]` |
+
+Fórmula de índice: `x + y × anchura + capa × anchura × altura`. Capas: 0–3 = capas de tile (0=vacío, IDs válidos ≥ 2048), 4 = sombras (0–15), 5 = región (0–255).
+
+**`read-map-tiles`** — Devuelve los IDs de tile de cada celda de la región solicitada. Útil para entender el estado actual antes de pintar.
+
+**`paint-map-tiles`** — Aplica un array de cambios de tile individuales de forma atómica. Las entradas inválidas se omiten y se devuelven como advertencias.
+
+**`fill-map-region`** — Rellena un rectángulo con un solo tile en cualquier capa. `tile_id=0` borra la región.
+
+**`paint-map-region`** — Modo fill (`tile_id`) o modo stamp (`tiles` = array plano row-major de `anchura×altura` IDs). El modo stamp es el camino eficiente para colocar plantillas de habitaciones o prefabs de mazmorra.
+
+---
 
 #### Tilesets
 
 | Herramienta | Campos clave |
 |---|---|
+| `read-tileset` | `tileset_id?` · `include_flags?` |
+| `create-tileset` | `name` · `mode?` · `tilesetNames? [9 entradas]` |
+| `edit-tileset-properties` | `tileset_id` · `name?` · `mode?` · `tilesetNames? [9 entradas]` |
 | `edit-tileset` | `tileset_id` · `flag_overrides [{tile_id, passable?, terrain_tag?}]` |
+
+**`read-tileset`** — Lee los metadatos del tileset: nombre, modo, archivos gráficos (`tilesetNames` con 9 slots: A1 A2 A3 A4 A5 B C D E) y un resumen de pasabilidad. Con `include_flags: true` devuelve el array completo de 8192 flags. Sin `tileset_id` lista todos los tilesets.
+
+**`create-tileset`** — Crea un nuevo tileset en `Tilesets.json`. Todos los 8192 flags empiezan como pasables. `tilesetNames` es un array de 9 nombres de archivo (sin extensión) de `img/tilesets/`.
+
+**`edit-tileset-properties`** — Edita nombre, modo (`0`=Mundo / `1`=Área) o los 9 archivos gráficos de un tileset. Para pasabilidad y terrain tags usa `edit-tileset`.
 
 **`edit-tileset`** — Modifica la pasabilidad y la etiqueta de terreno de uno o varios tiles de un tileset. `tile_id` va de 0 a 8191. `passable: false` bloquea las cuatro direcciones. `terrain_tag` (0–7) se almacena en los bits 12–15 del flag.
 
@@ -534,6 +724,21 @@ Bonificaciones de estadísticas: `max_hp` · `max_mp` · `attack` · `defense` �
 `setup-debug-plugin` escribe `RPGMakerDebugger.js` en `js/plugins/`, lo registra en `plugins.js` (activado) y también registra los demás `.js` ya existentes en la carpeta (desactivados) para que aparezcan en el Plugin Manager. Se puede llamar varias veces — nunca sobreescribe plugins existentes.
 
 **`manage-plugins`** — `list` devuelve todos los plugins registrados con nombre/estado/descripción. `enable`/`disable` activan o desactivan. `delete` los elimina del registro y borra el archivo `.js` si existe.
+
+| `edit-plugin-parameters` | `plugin_name` · `parameters {clave: "valor", …}` |
+
+**`edit-plugin-parameters`** — Actualiza parámetros individuales de un plugin registrado. Solo se cambian las claves indicadas; el resto se preserva. Los valores deben ser strings (formato de RPG Maker MZ).
+
+#### Animaciones
+
+| Herramienta | Campos clave |
+|---|---|
+| `read-animation` | `animation_id?` |
+| `edit-animation` | `animation_id` · `name?` · `effect_name?` · `display_type?` · `offset_x?` · `offset_y?` · `speed?` |
+
+**`read-animation`** — Devuelve el objeto de animación completo cuando se proporciona `animation_id`. Sin ID lista todas las animaciones con id y nombre.
+
+**`edit-animation`** — Edita metadatos: `effect_name` referencia un archivo Effekseer de la carpeta `effects/` (sin extensión). `display_type`: 0=cabeza objetivo, 1=centro objetivo, 2=pantalla completa, -1=frente pantalla.
 
 #### Control en tiempo real
 
