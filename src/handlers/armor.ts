@@ -23,6 +23,7 @@ export async function handleEditArmor(ctx: HandlerContext): Promise<string> {
   if (input.atype_id !== undefined) updates.atypeId = input.atype_id;
   if (input.price !== undefined) updates.price = input.price;
   if (input.icon_index !== undefined) updates.iconIndex = input.icon_index;
+  if (input.etype_id !== undefined) updates.etypeId = input.etype_id;
 
   try {
     if (armorId) {
@@ -35,6 +36,7 @@ export async function handleEditArmor(ctx: HandlerContext): Promise<string> {
     } else {
       updates.parameters = buildParameters(input);
       updates.atypeId = updates.atypeId ?? 1;
+      updates.etypeId = (updates.etypeId as number | undefined) ?? 1;
       updates.traits = [];
       updates.note = "";
       const newId = writer.addArmor(updates);

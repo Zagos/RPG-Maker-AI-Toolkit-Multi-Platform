@@ -105,7 +105,7 @@ RpgMakerMCP/
 │   │   └── plugin-template.ts # RPGMakerDebugger plugin generator (v2)
 │   ├── tools/                 # Zod/JSON schema definitions (one per tool)
 │   └── types/                 # RPG Maker MZ TypeScript interfaces
-├── tests/                     # Vitest test suite (250 tests, 10 suites)
+├── tests/                     # Vitest test suite (357 tests, 20 suites)
 ├── scripts/                   # launch-rpgmaker.js helper
 ├── skills/                    # Claude Code slash-command skills
 ├── .env.example
@@ -130,7 +130,7 @@ All tools return JSON. `_id` fields are optional on input — omit them to **cre
 | `list-resources` | List asset files in `img/` and `audio/` directories by category |
 | `delete-entity` | Null out an entity in its database array (soft-delete with backup) |
 | `get-change-history` | Query the audit log of all MCP writes |
-| `edit-system` | Edit global game settings: title, currency, party, start position, switch/variable names, audio |
+| `edit-system` | Edit global game settings: title, currency, party, start position, switch/variable names, audio, UI terms |
 | `read-system-extended` | Read extended System.json sections not exposed by `edit-system`: terms, vehicles, sounds, window settings |
 
 **`list-game-data`** — `data_type` enum: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops` `States` `Animations` `Tilesets` `Maps` `CommonEvents`
@@ -145,7 +145,7 @@ All tools return JSON. `_id` fields are optional on input — omit them to **cre
 
 **`get-change-history`** — filters: `limit` · `entity_type` · `tool` · `action (create|update|delete)` · `since (ISO 8601)`
 
-**`edit-system`** — all fields optional: `game_title` · `currency_unit` · `initial_party [actor_ids]` · `start_map_id` · `start_x` · `start_y` · `switch_names {"1":"Name"}` · `variable_names {"1":"Name"}` · `title_bgm` · `battle_bgm` · `victory_me` · `defeat_me`
+**`edit-system`** — all fields optional: `game_title` · `currency_unit` · `initial_party [actor_ids]` · `start_map_id` · `start_x` · `start_y` · `switch_names {"1":"Name"}` · `variable_names {"1":"Name"}` · `title_bgm` · `battle_bgm` · `victory_me` · `defeat_me` · `terms_basic {"0":"Level"}` · `terms_params {"0":"Max HP"}` · `terms_commands {"0":"Fight"}` · `terms_messages {"actorDamage":"..."}` (UI labels and battle message strings)
 
 **`read-system-extended`** — `section` enum: `terms` `vehicles` `sounds` `basic` `all` (default: `all`). Read-only; no writes.
 
@@ -232,9 +232,11 @@ Common effect codes:
 |---|---|
 | `edit-item` | `item_id?` · `name` · `description` · `price` · `icon_index` · `itype_id (1=item,2=key)` · `consumable` · `scope (0-11)` · `occasion (0-3)` · `speed` · `success_rate` · `repeats` · `tp_gain` · `hit_type (0-2)` · `animation_id` · `note` |
 | `edit-weapon` | `weapon_id?` · `name` · `wtype_id` · `price` · `icon_index` · `animation_id` · stat bonuses |
-| `edit-armor` | `armor_id?` · `name` · `atype_id` · `price` · `icon_index` · stat bonuses |
+| `edit-armor` | `armor_id?` · `name` · `atype_id` · `etype_id` · `price` · `icon_index` · stat bonuses |
 
 Stat bonus fields (weapons & armors): `max_hp` · `max_mp` · `attack` · `defense` · `magic_attack` · `magic_defense` · `agility` · `luck`
+
+**`edit-armor`** — `etype_id` controls the equipment slot: 1=weapon, 2=shield, 3=head, 4=body, 5=accessory (default 1).
 
 **`edit-item`** — `scope` values: 0=none, 1=1 enemy, 2=all enemies, 3=1 enemy (dead), 4=all enemies (dead), 5=1 ally, 6=all allies, 7=1 ally (dead), 8=all allies (dead), 9=user, 10=1 ally (KO), 11=all allies (KO). `occasion` values: 0=always, 1=battle only, 2=menu only, 3=never. `hit_type`: 0=certain, 1=physical, 2=magical.
 
@@ -294,7 +296,7 @@ Page conditions: `turnValid`+`turnA`+`turnB` (fire on turn A, A+B, A+2B…) · `
 | Tool | Key inputs |
 |---|---|
 | `create-map` | `name` · `map_id?` · `width?` · `height?` · `tileset_id?` · `parent_id?` · `scroll_type?` · `encounter_step?` · `note?` · `enable_name_display?` · `autoplay_bgm?` · `bgm_name?` · `autoplay_bgs?` · `bgs_name?` |
-| `edit-map` | `map_id` · `name?` · `tileset_id?` · `scroll_type?` · `encounter_step?` · `autoplay_bgm?` · `bgm_name?` · `bgm_volume?` · `bgm_pitch?` · `autoplay_bgs?` · `bgs_name?` · `parallax_name?` · `parallax_show?` · `parallax_loop_x?` · `parallax_loop_y?` · `specify_battleback?` · `battleback1?` · `battleback2?` · `encounters [{enemy_id,weight?}]?` |
+| `edit-map` | `map_id` · `name?` · `tileset_id?` · `scroll_type?` · `encounter_step?` · `autoplay_bgm?` · `bgm_name?` · `bgm_volume?` · `bgm_pitch?` · `autoplay_bgs?` · `bgs_name?` · `bgs_volume?` · `bgs_pitch?` · `parallax_name?` · `parallax_show?` · `parallax_loop_x?` · `parallax_loop_y?` · `parallax_sx?` · `parallax_sy?` · `disable_dashing?` · `specify_battleback?` · `battleback1?` · `battleback2?` · `encounters [{enemy_id,weight?}]?` |
 | `delete-map` | `map_id` · `confirm: true` (required) |
 | `create-map-event` | `map_id` · `event_name` · `x` · `y` · `event_type (npc\|chest\|enemy\|trigger)` · `character` · `pages` · `dialogue` · `treasure` · `troop_id` |
 | `edit-map-event` | `map_id` · `event_id` · `name?` · `x?` · `y?` · `note?` · `append_commands?` |
@@ -409,6 +411,45 @@ Plugin filenames are sanitized on write: names with `<>:"/\|?*`, path separators
 
 ---
 
+#### Entity Creation
+
+All `edit-X` tools create a new entity when the `*_id` field is omitted. The dedicated create tools below offer stricter schemas with required `name`, explicit defaults, and return the new ID immediately.
+
+| Tool | Description |
+|---|---|
+| `create-actor` | Create a new actor with class, levels, sprite, equips, and profile |
+| `create-item` | Create a new item (consumable or key item) |
+| `create-weapon` | Create a new weapon with weapon type and stat bonuses |
+| `create-armor` | Create a new armor with armor/equipment type and stat bonuses |
+| `create-skill` | Create a new skill with costs, scope, damage, and animation |
+| `create-class` | Create a new class with exp curve and initial learnings |
+| `create-state` | Create a new state with restriction, duration, and removal conditions |
+| `create-enemy` | Create a new enemy with stats, drops, and battle actions |
+| `create-animation` | Create a new animation entry (metadata only; frame data authored separately) |
+
+All create tools return `{ success, <type>_id, name }`.
+
+---
+
+#### Utility Tools
+
+| Tool | Key inputs |
+|---|---|
+| `search-entity` | `entity_type` · `query (substring search on name)` |
+| `duplicate-entity` | `entity_type` · `entity_id` · `new_name?` |
+| `export-project-summary` | *(no required input)* |
+| `edit-map-info` | `map_id` · `name?` · `parent_id?` · `order?` · `expanded?` |
+
+**`search-entity`** — Case-insensitive substring search across any entity type (Actor, Item, Weapon, Armor, Skill, Class, State, Enemy, Troop, CommonEvent, Animation, Tileset). Returns `{ matches: [{id, name}] }`.
+
+**`duplicate-entity`** — Clone an entity with a new name and next available ID. The duplicate gets all fields copied from the source (except id). Returns `{ success, new_id, name }`.
+
+**`export-project-summary`** — Returns a compact overview of the whole project: actor/enemy/skill counts, map names, switch and variable totals. Useful for getting oriented in an unfamiliar project.
+
+**`edit-map-info`** — Edit only the MapInfos.json metadata entry (name, parent, order, scroll) without touching the map tile/event file.
+
+---
+
 #### Runtime Control
 
 These tools control the **running game** in real time. They require:
@@ -438,6 +479,11 @@ The plugin polls the MCP server every 500 ms via HTTP. All commands are confirme
 | `run-battle-suite` | Run the same battle N times and return aggregated stats: win rate, avg HP, damage dealt/taken |
 | `execute-script` | Evaluate arbitrary JavaScript in the running game (`code`, `timeout?`) |
 | `show-message` | Display a message in the game's message window (`text`, `speaker?`) |
+| `get-actor-runtime` | Read a single actor's live state: level, HP, MP, TP, states, equipment, skills |
+| `manage-party-runtime` | `action (get\|add\|remove)` · `actor_id?` — read party list or add/remove member |
+| `control-weather-runtime` | `type (none\|rain\|storm\|snow)` · `power (0-9)` · `duration?` |
+| `play-audio-runtime` | `action (bgm\|bgs\|se\|me\|stop_bgm\|stop_bgs\|stop_se)` · `name?` · `volume?` · `pitch?` · `pan?` |
+| `get-map-state-runtime` | Read current map dimensions, player position, and active weather |
 
 **`get-switch`** / **`get-variable`** — Return `{ id, value, name? }`. Name is read from `System.json` if defined.
 
@@ -485,8 +531,14 @@ Backups are created automatically before every write and stored in `<project>/ba
 | Tool | Key inputs |
 |---|---|
 | `batch-edit` | `operations [{tool, input}]` (max 50) · `stop_on_error?` |
+| `batch-create-entities` | `entity_type (Actor\|Item\|Weapon\|Armor\|Skill\|Class\|State\|Enemy)` · `entities [array of entity objects]` (max 50) |
+| `batch-delete-entities` | `entity_type` · `entity_ids [array of integers]` (max 100) · `confirm: true` |
 
-Executes multiple tool calls in a single MCP round-trip. Each operation runs in order; failures are reported per-operation and do not block the rest (unless `stop_on_error: true`).
+**`batch-edit`** — Executes multiple tool calls in a single MCP round-trip. Each operation runs in order; failures are reported per-operation and do not block the rest (unless `stop_on_error: true`).
+
+**`batch-create-entities`** — Create multiple entities of the same type atomically. Each object in `entities` needs at least `name`. Returns `{ results: [{index, success, id}] }`.
+
+**`batch-delete-entities`** — Null out multiple entities in one operation. Supports all entity types including Animation, Troop, CommonEvent. Requires `confirm: true`. Returns per-ID success/error.
 
 ```json
 {
