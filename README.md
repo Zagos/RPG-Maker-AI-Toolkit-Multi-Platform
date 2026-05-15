@@ -452,6 +452,12 @@ Executes multiple tool calls in a single MCP round-trip. Each operation runs in 
 
 ---
 
+### Examples
+
+You never write JSON directly — just describe what you want in plain language and the AI handles the rest. See **[EXAMPLES.md](EXAMPLES.md)** for natural-language prompts and the equivalent JSON for every tool, in English and Spanish.
+
+---
+
 ### Change Log
 
 Every successful write appends an entry to `<project>/mcp-changes.json`. Use `get-change-history` to query it:
@@ -795,6 +801,12 @@ Los backups se crean automáticamente antes de cada escritura. `BACKUP_MAX_COUNT
   ]
 }
 ```
+
+### Ejemplos
+
+No escribes JSON directamente — solo describe lo que quieres en lenguaje natural y la IA se encarga del resto. Consulta **[EXAMPLES.md](EXAMPLES.md)** para ver prompts en lenguaje natural y el JSON equivalente de cada herramienta, en inglés y español.
+
+---
 
 ### Tests
 
