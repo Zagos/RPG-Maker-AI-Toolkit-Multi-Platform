@@ -49,6 +49,24 @@ import { handleEditPluginParameters } from "./plugin-parameters.js";
 import { handleEditEnemyActions } from "./enemy-actions.js";
 import { handleDeleteEntity } from "./delete-entity.js";
 import { handleReadAnimation, handleEditAnimation } from "./animation.js";
+import { handleCreateSkill } from "./create-skill.js";
+import { handleCreateItem } from "./create-item.js";
+import { handleCreateWeapon } from "./create-weapon.js";
+import { handleCreateArmor } from "./create-armor.js";
+import { handleCreateClass } from "./create-class.js";
+import { handleCreateState } from "./create-state.js";
+import { handleCreateEnemy } from "./create-enemy.js";
+import { handleCreateActor } from "./create-actor.js";
+import { handleCreateAnimation } from "./create-animation.js";
+import { handleGetActorRuntime } from "./get-actor-runtime.js";
+import { handleManagePartyRuntime } from "./manage-party-runtime.js";
+import { handleControlWeatherRuntime } from "./control-weather-runtime.js";
+import { handlePlayAudioRuntime } from "./play-audio-runtime.js";
+import { handleGetMapStateRuntime } from "./get-map-state-runtime.js";
+import { handleEditMapInfo } from "./map-info.js";
+import { handleSearchEntity } from "./search-entity.js";
+import { handleDuplicateEntity } from "./duplicate-entity.js";
+import { handleExportProjectSummary } from "./project-summary.js";
 
 // All tool handlers except batch-edit (to avoid circular imports)
 export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
@@ -126,4 +144,22 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "delete-entity": handleDeleteEntity,
   "read-animation": handleReadAnimation,
   "edit-animation": handleEditAnimation,
+  "create-skill": handleCreateSkill,
+  "create-item": handleCreateItem,
+  "create-weapon": handleCreateWeapon,
+  "create-armor": handleCreateArmor,
+  "create-class": handleCreateClass,
+  "create-state": handleCreateState,
+  "create-enemy": handleCreateEnemy,
+  "create-actor": handleCreateActor,
+  "create-animation": handleCreateAnimation,
+  "get-actor-runtime": handleGetActorRuntime,
+  "manage-party-runtime": handleManagePartyRuntime,
+  "control-weather-runtime": handleControlWeatherRuntime,
+  "play-audio-runtime": handlePlayAudioRuntime,
+  "get-map-state-runtime": handleGetMapStateRuntime,
+  "edit-map-info": handleEditMapInfo,
+  "search-entity": handleSearchEntity,
+  "duplicate-entity": handleDuplicateEntity,
+  "export-project-summary": handleExportProjectSummary,
 };

@@ -1,0 +1,236 @@
+/**
+ * RPG Maker MZ event command codes, trait codes, and effect codes.
+ * Use these instead of magic numbers throughout handlers and commands builders.
+ */
+
+export const EVENT_CMD = {
+  // Messages
+  SHOW_TEXT: 101,
+  TEXT_CONT: 401,
+  SHOW_CHOICES: 102,
+  CHOICE_BRANCH: 402,
+  CHOICE_CANCEL: 403,
+  CHOICE_END: 404,
+  SHOW_SCROLLING_TEXT: 105,
+  SCROLLING_TEXT_CONT: 405,
+
+  // Input
+  INPUT_NUMBER: 103,
+  SELECT_ITEM: 104,
+
+  // Flow control
+  CONDITIONAL_BRANCH: 111,
+  ELSE_BRANCH: 411,
+  END_IF: 412,
+  LOOP: 112,
+  REPEAT_ABOVE: 413,
+  BREAK_LOOP: 113,
+  EXIT_EVENT: 115,
+  COMMON_EVENT: 117,
+  LABEL: 118,
+  JUMP_TO_LABEL: 119,
+  COMMENT: 108,
+  COMMENT_CONT: 408,
+
+  // Data manipulation
+  CONTROL_SWITCHES: 121,
+  CONTROL_SELF_SWITCH: 123,
+  CONTROL_VARIABLES: 122,
+  CONTROL_TIMER: 124,
+
+  // Party
+  CHANGE_GOLD: 125,
+  CHANGE_ITEMS: 126,
+  CHANGE_WEAPONS: 127,
+  CHANGE_ARMORS: 128,
+  CHANGE_PARTY_MEMBER: 129,
+
+  // Actors
+  CHANGE_HP: 311,
+  CHANGE_MP: 312,
+  CHANGE_TP: 326,
+  CHANGE_STATE: 313,
+  RECOVER_ALL: 314,
+  CHANGE_EXP: 315,
+  CHANGE_LEVEL: 316,
+  CHANGE_PARAMETER: 317,
+  CHANGE_SKILL: 318,
+  CHANGE_EQUIPMENT: 319,
+  CHANGE_NAME: 320,
+  CHANGE_CLASS: 321,
+  CHANGE_NICKNAME: 324,
+  CHANGE_PROFILE: 325,
+
+  // Movement
+  TRANSFER_PLAYER: 201,
+  SET_VEHICLE_LOCATION: 202,
+  SET_EVENT_LOCATION: 203,
+  SCROLL_MAP: 204,
+  MOVE_ROUTE: 205,
+  WAIT_FOR_MOVE: 206,
+
+  // Screen
+  FADE_OUT: 221,
+  FADE_IN: 222,
+  TINT_SCREEN: 223,
+  FLASH_SCREEN: 224,
+  SHAKE_SCREEN: 225,
+  WAIT: 230,
+  SHOW_ANIMATION: 212,
+  SHOW_BALLOON: 213,
+
+  // Pictures
+  SHOW_PICTURE: 231,
+  MOVE_PICTURE: 232,
+  ROTATE_PICTURE: 233,
+  TINT_PICTURE: 234,
+  ERASE_PICTURE: 235,
+
+  // Audio
+  PLAY_BGM: 241,
+  FADE_OUT_BGM: 242,
+  SAVE_BGM: 243,
+  RESUME_BGM: 244,
+  PLAY_BGS: 245,
+  FADE_OUT_BGS: 246,
+  PLAY_ME: 249,
+  PLAY_SE: 250,
+  STOP_SE: 251,
+
+  // Battle
+  BATTLE_PROCESSING: 301,
+  SHOP_PROCESSING: 302,
+  SHOP_ITEM_CONT: 605,
+  NAME_INPUT: 303,
+
+  // System
+  OPEN_MENU: 351,
+  OPEN_SAVE: 352,
+  GAME_OVER: 353,
+  RETURN_TO_TITLE: 354,
+
+  // Script
+  SCRIPT: 355,
+  SCRIPT_CONT: 655,
+
+  // Terminator
+  END: 0,
+} as const;
+
+export const TRAIT_CODE = {
+  // Rate traits
+  ELEMENT_RATE: 11,
+  DEBUFF_RATE: 12,
+  STATE_RATE: 13,
+  STATE_RESIST: 14,
+
+  // Param traits
+  PARAM: 21,        // Basic parameter rate (ATK, DEF, etc.)
+  EX_PARAM: 22,     // Extra parameter (HIT, EVA, CRI, etc.)
+  SP_PARAM: 23,     // Special parameter (TGR, GRD, REC, etc.)
+
+  // Attack traits
+  ATK_ELEMENT: 31,
+  ATK_STATE: 32,
+  ATK_SPEED: 33,
+  ATK_TIMES: 34,
+
+  // Skill traits
+  STYPE_ADD: 41,
+  STYPE_SEAL: 42,
+  SKILL_ADD: 43,
+  SKILL_SEAL: 44,
+
+  // Equip traits
+  EQUIP_WTYPE: 55,
+  EQUIP_ATYPE: 56,
+  EQUIP_LOCK: 57,
+  EQUIP_SEAL: 58,
+  SLOT_TYPE: 59,
+
+  // Other traits
+  ACTION_PLUS: 61,
+  SPECIAL_FLAG: 62,
+  COLLAPSE_TYPE: 63,
+  PARTY_ABILITY: 64,
+} as const;
+
+export const EFFECT_CODE = {
+  RECOVER_HP: 11,
+  RECOVER_MP: 12,
+  GAIN_TP: 13,
+  ADD_STATE: 21,
+  REMOVE_STATE: 22,
+  ADD_BUFF: 31,
+  ADD_DEBUFF: 32,
+  REMOVE_BUFF: 33,
+  REMOVE_DEBUFF: 34,
+  SPECIAL: 41,
+  GROW: 42,
+  LEARN_SKILL: 43,
+  COMMON_EVENT: 44,
+} as const;
+
+export const PARAM_INDEX = {
+  MAX_HP: 0,
+  MAX_MP: 1,
+  ATK: 2,
+  DEF: 3,
+  MAT: 4,
+  MDF: 5,
+  AGI: 6,
+  LUK: 7,
+} as const;
+
+export const SKILL_SCOPE = {
+  NONE: 0,
+  ONE_ENEMY: 1,
+  ALL_ENEMIES: 2,
+  ONE_RANDOM_ENEMY: 3,
+  TWO_RANDOM_ENEMIES: 4,
+  THREE_RANDOM_ENEMIES: 5,
+  FOUR_RANDOM_ENEMIES: 6,
+  ONE_ALLY: 7,
+  ALL_ALLIES: 8,
+  ONE_ALLY_DEAD: 9,
+  ALL_ALLIES_DEAD: 10,
+  USER: 11,
+} as const;
+
+export const SKILL_OCCASION = {
+  ALWAYS: 0,
+  BATTLE_ONLY: 1,
+  MENU_ONLY: 2,
+  NEVER: 3,
+} as const;
+
+export const HIT_TYPE = {
+  CERTAIN: 0,
+  PHYSICAL: 1,
+  MAGICAL: 2,
+} as const;
+
+export const DAMAGE_TYPE = {
+  NONE: 0,
+  HP_DAMAGE: 1,
+  MP_DAMAGE: 2,
+  HP_RECOVER: 3,
+  MP_RECOVER: 4,
+  HP_DRAIN: 5,
+  MP_DRAIN: 6,
+} as const;
+
+export const ITEM_TYPE = {
+  REGULAR: 1,
+  KEY: 2,
+  HIDDEN_A: 3,
+  HIDDEN_B: 4,
+} as const;
+
+export const EQUIP_TYPE = {
+  WEAPON: 0,
+  SHIELD: 1,
+  HEAD: 2,
+  BODY: 3,
+  ACCESSORY: 4,
+} as const;

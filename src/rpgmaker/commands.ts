@@ -11,8 +11,37 @@ export type MapEventCommandInput = {
     | "variable"
     | "common-event"
     | "battle"
-    | "animation";
-  data?: string;
+    | "animation"
+    | "conditional-branch"
+    | "loop"
+    | "break-loop"
+    | "exit-event"
+    | "label"
+    | "jump-to-label"
+    | "control-self-switch"
+    | "change-gold"
+    | "change-item"
+    | "change-weapon"
+    | "change-armor"
+    | "add-party-member"
+    | "remove-party-member"
+    | "change-hp"
+    | "change-mp"
+    | "change-tp"
+    | "recover-all"
+    | "change-state"
+    | "shop"
+    | "show-picture"
+    | "erase-picture"
+    | "play-bgm"
+    | "play-se"
+    | "play-me"
+    | "stop-bgm"
+    | "fade-out"
+    | "fade-in"
+    | "comment"
+    | "change-variable";
+  data?: string | Record<string, unknown>;
 };
 
 export type DialogueChoiceInput = {
@@ -80,11 +109,17 @@ export function actionCommands(action?: string): RPGEventCommand[] {
 }
 
 export function commandInputToEventCommands(command: MapEventCommandInput): RPGEventCommand[] {
-  const data = command.data || "";
+  const rawData = command.data ?? "";
+  // Resolve a string value for commands that still use plain string data
+  const data = typeof rawData === "string" ? rawData : "";
+  // Resolve object data for structured commands
+  const obj: Record<string, unknown> = typeof rawData === "object" && rawData !== null ? rawData : {};
 
   switch (command.type) {
+    // ── Existing types ────────────────────────────────────────────────────────
     case "message":
       return textCommands(data);
+
     case "choice": {
       const choices = data.split("|").map((c) => c.trim()).filter(Boolean);
       return [
@@ -93,24 +128,262 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
         { code: 404, indent: 0, parameters: [] },
       ];
     }
+
     case "wait":
       return [{ code: 230, indent: 0, parameters: [Number(data) || 60] }];
+
     case "transfer": {
       const [mapId, x, y, direction = "2", fade = "0"] = data.split(":");
       return [{ code: 201, indent: 0, parameters: [0, Number(mapId), Number(x), Number(y), Number(direction), Number(fade)] }];
     }
+
     case "script":
       return scriptCommands(data);
+
     case "switch":
       return actionCommands(`setSwitch:${data}`);
+
     case "variable":
       return actionCommands(`setVariable:${data}`);
+
     case "common-event":
       return actionCommands(`commonEvent:${data}`);
+
     case "battle":
       return [{ code: 301, indent: 0, parameters: [0, Number(data), true, false] }];
+
     case "animation":
       return [{ code: 212, indent: 0, parameters: [0, Number(data), true] }];
+
+    // ── New types ─────────────────────────────────────────────────────────────
+
+    case "conditional-branch": {
+      const condType = String(obj["type"] ?? "script");
+      let params: unknown[];
+
+      if (condType === "switch") {
+        const id = Number(obj["id"] ?? 1);
+        const value = obj["value"] !== false && obj["value"] !== 1;
+        params = [0, id, 0, value ? 0 : 1];
+      } else if (condType === "variable") {
+        const id = Number(obj["id"] ?? 1);
+        const operator = Number(obj["operator"] ?? 0);
+        const value = Number(obj["value"] ?? 0);
+        params = [1, id, 0, operator, value];
+      } else {
+        // default: script condition
+        const condition = String(obj["condition"] ?? "true");
+        params = [12, condition];
+      }
+
+      return [
+        { code: 111, indent: 0, parameters: params },
+        { code: 411, indent: 0, parameters: [] },
+        { code: 412, indent: 0, parameters: [] },
+      ];
+    }
+
+    case "loop":
+      return [
+        { code: 112, indent: 0, parameters: [] },
+        { code: 413, indent: 0, parameters: [] },
+      ];
+
+    case "break-loop":
+      return [{ code: 113, indent: 0, parameters: [] }];
+
+    case "exit-event":
+      return [{ code: 115, indent: 0, parameters: [] }];
+
+    case "label": {
+      const name = typeof rawData === "string" ? rawData : String(obj["name"] ?? "");
+      return [{ code: 118, indent: 0, parameters: [name] }];
+    }
+
+    case "jump-to-label": {
+      const name = typeof rawData === "string" ? rawData : String(obj["name"] ?? "");
+      return [{ code: 119, indent: 0, parameters: [name] }];
+    }
+
+    case "control-self-switch": {
+      const key = String(obj["key"] ?? "A");
+      const value = obj["value"] !== false && obj["value"] !== 0;
+      return [{ code: 123, indent: 0, parameters: [key, value ? 0 : 1] }];
+    }
+
+    case "change-gold": {
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 0);
+      return [{ code: 125, indent: 0, parameters: [0, 0, operation, amount] }];
+    }
+
+    case "change-item": {
+      const item_id = Number(obj["item_id"] ?? 1);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 1);
+      return [{ code: 126, indent: 0, parameters: [item_id, operation, 0, amount] }];
+    }
+
+    case "change-weapon": {
+      const weapon_id = Number(obj["weapon_id"] ?? 1);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 1);
+      const include_equip = Boolean(obj["include_equip"] ?? false);
+      return [{ code: 127, indent: 0, parameters: [weapon_id, operation, 0, amount, include_equip] }];
+    }
+
+    case "change-armor": {
+      const armor_id = Number(obj["armor_id"] ?? 1);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 1);
+      const include_equip = Boolean(obj["include_equip"] ?? false);
+      return [{ code: 128, indent: 0, parameters: [armor_id, operation, 0, amount, include_equip] }];
+    }
+
+    case "add-party-member": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      return [{ code: 129, indent: 0, parameters: [actor_id, 0] }];
+    }
+
+    case "remove-party-member": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      return [{ code: 129, indent: 0, parameters: [actor_id, 1] }];
+    }
+
+    case "change-hp": {
+      const actor_id = Number(obj["actor_id"] ?? 0);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 0);
+      const allow_death = Boolean(obj["allow_death"] ?? false);
+      return [{ code: 311, indent: 0, parameters: [0, actor_id, 0, 0, operation, amount, allow_death] }];
+    }
+
+    case "change-mp": {
+      const actor_id = Number(obj["actor_id"] ?? 0);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 0);
+      return [{ code: 312, indent: 0, parameters: [0, actor_id, 0, 0, operation, amount] }];
+    }
+
+    case "change-tp": {
+      const actor_id = Number(obj["actor_id"] ?? 0);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 0);
+      return [{ code: 326, indent: 0, parameters: [0, actor_id, 0, 0, operation, amount] }];
+    }
+
+    case "recover-all": {
+      const actor_id = Number(obj["actor_id"] ?? 0);
+      return [{ code: 314, indent: 0, parameters: [0, actor_id] }];
+    }
+
+    case "change-state": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const state_id = Number(obj["state_id"] ?? 1);
+      return [{ code: 313, indent: 0, parameters: [0, actor_id, operation, state_id] }];
+    }
+
+    case "shop": {
+      const goods = Array.isArray(obj["goods"]) ? obj["goods"] as Array<Record<string, unknown>> : [];
+      const purchase_only = Boolean(obj["purchase_only"] ?? false);
+      if (goods.length === 0) return [];
+
+      const firstGood = [
+        Number(goods[0]["type"] ?? 0),
+        Number(goods[0]["id"] ?? 1),
+        Number(goods[0]["price_type"] ?? 0),
+        Number(goods[0]["price"] ?? 0),
+      ];
+
+      const cmds: RPGEventCommand[] = [
+        { code: 302, indent: 0, parameters: [firstGood, purchase_only ? 1 : 0] },
+      ];
+
+      for (let i = 1; i < goods.length; i++) {
+        const g = goods[i];
+        cmds.push({
+          code: 605,
+          indent: 0,
+          parameters: [[Number(g["type"] ?? 0), Number(g["id"] ?? 1), Number(g["price_type"] ?? 0), Number(g["price"] ?? 0)]],
+        });
+      }
+
+      return cmds;
+    }
+
+    case "show-picture": {
+      const picture_id = Number(obj["picture_id"] ?? 1);
+      const name = String(obj["name"] ?? "");
+      const origin = Number(obj["origin"] ?? 0);
+      const x = Number(obj["x"] ?? 0);
+      const y = Number(obj["y"] ?? 0);
+      const scale_x = Number(obj["scale_x"] ?? 100);
+      const scale_y = Number(obj["scale_y"] ?? 100);
+      const opacity = Number(obj["opacity"] ?? 255);
+      const blend_mode = Number(obj["blend_mode"] ?? 0);
+      return [{ code: 231, indent: 0, parameters: [picture_id, name, origin, 0, x, y, scale_x, scale_y, opacity, blend_mode] }];
+    }
+
+    case "erase-picture": {
+      const picture_id = Number(obj["picture_id"] ?? 1);
+      return [{ code: 235, indent: 0, parameters: [picture_id] }];
+    }
+
+    case "play-bgm": {
+      const name = typeof rawData === "string" && rawData ? rawData : String(obj["name"] ?? "");
+      return [{
+        code: 241,
+        indent: 0,
+        parameters: [{ name, volume: Number(obj["volume"] ?? 90), pitch: Number(obj["pitch"] ?? 100), pan: Number(obj["pan"] ?? 0) }],
+      }];
+    }
+
+    case "play-se": {
+      const name = typeof rawData === "string" && rawData ? rawData : String(obj["name"] ?? "");
+      return [{
+        code: 250,
+        indent: 0,
+        parameters: [{ name, volume: Number(obj["volume"] ?? 90), pitch: Number(obj["pitch"] ?? 100), pan: Number(obj["pan"] ?? 0) }],
+      }];
+    }
+
+    case "play-me": {
+      const name = typeof rawData === "string" && rawData ? rawData : String(obj["name"] ?? "");
+      return [{
+        code: 249,
+        indent: 0,
+        parameters: [{ name, volume: Number(obj["volume"] ?? 90), pitch: Number(obj["pitch"] ?? 100), pan: 0 }],
+      }];
+    }
+
+    case "stop-bgm":
+      return [{ code: 243, indent: 0, parameters: [] }];
+
+    case "fade-out": {
+      const duration = Number(obj["duration"] ?? (typeof rawData === "string" && rawData ? rawData : 24)) || 24;
+      return [{ code: 221, indent: 0, parameters: [duration] }];
+    }
+
+    case "fade-in": {
+      const duration = Number(obj["duration"] ?? (typeof rawData === "string" && rawData ? rawData : 24)) || 24;
+      return [{ code: 222, indent: 0, parameters: [duration] }];
+    }
+
+    case "comment": {
+      const text = typeof rawData === "string" ? rawData : String(obj["text"] ?? "");
+      return [{ code: 108, indent: 0, parameters: [text] }];
+    }
+
+    case "change-variable": {
+      const id = Number(obj["id"] ?? 1);
+      const operandRaw = obj["operand"] ?? 0;
+      const operand = typeof operandRaw === "number" ? operandRaw : Number(operandRaw) || 0;
+      const opMap: Record<string, number> = { set: 0, add: 1, sub: 2, mul: 3, div: 4, mod: 5 };
+      const operation = opMap[String(obj["operation"] ?? "set")] ?? 0;
+      return [{ code: 122, indent: 0, parameters: [id, id, operation, 0, operand] }];
+    }
+
     default:
       return [];
   }

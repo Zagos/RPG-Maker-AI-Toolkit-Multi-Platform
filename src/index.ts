@@ -82,6 +82,24 @@ import { EditPluginParametersTool } from "./tools/edit-plugin-parameters.js";
 import { EditEnemyActionsTool } from "./tools/edit-enemy-actions.js";
 import { DeleteEntityTool } from "./tools/delete-entity.js";
 import { ReadAnimationTool, EditAnimationTool } from "./tools/animation.js";
+import { CreateSkillTool } from "./tools/create-skill.js";
+import { CreateItemTool } from "./tools/create-item.js";
+import { CreateWeaponTool } from "./tools/create-weapon.js";
+import { CreateArmorTool } from "./tools/create-armor.js";
+import { CreateClassTool } from "./tools/create-class.js";
+import { CreateStateTool } from "./tools/create-state.js";
+import { CreateEnemyTool } from "./tools/create-enemy.js";
+import { CreateActorTool } from "./tools/create-actor.js";
+import { CreateAnimationTool } from "./tools/create-animation.js";
+import { GetActorRuntimeTool } from "./tools/get-actor-runtime.js";
+import { ManagePartyRuntimeTool } from "./tools/manage-party-runtime.js";
+import { ControlWeatherRuntimeTool } from "./tools/control-weather-runtime.js";
+import { PlayAudioRuntimeTool } from "./tools/play-audio-runtime.js";
+import { GetMapStateRuntimeTool } from "./tools/get-map-state-runtime.js";
+import { EditMapInfoTool } from "./tools/edit-map-info.js";
+import { SearchEntityTool } from "./tools/search-entity.js";
+import { DuplicateEntityTool } from "./tools/duplicate-entity.js";
+import { ExportProjectSummaryTool } from "./tools/project-summary.js";
 
 // Handlers
 import type { HandlerContext } from "./handlers/types.js";
@@ -276,6 +294,24 @@ const tools: Tool[] = [
   DeleteEntityTool,
   ReadAnimationTool,
   EditAnimationTool,
+  CreateSkillTool,
+  CreateItemTool,
+  CreateWeaponTool,
+  CreateArmorTool,
+  CreateClassTool,
+  CreateStateTool,
+  CreateEnemyTool,
+  CreateActorTool,
+  CreateAnimationTool,
+  GetActorRuntimeTool,
+  ManagePartyRuntimeTool,
+  ControlWeatherRuntimeTool,
+  PlayAudioRuntimeTool,
+  GetMapStateRuntimeTool,
+  EditMapInfoTool,
+  SearchEntityTool,
+  DuplicateEntityTool,
+  ExportProjectSummaryTool,
   {
     name: "get-change-history",
     description: "Read the MCP change log. Returns a newest-first list of all tool calls that modified RPG Maker project data.",
