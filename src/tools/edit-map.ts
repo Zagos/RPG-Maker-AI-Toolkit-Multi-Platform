@@ -59,6 +59,14 @@ export const EditMapTool: Tool = {
         type: "string",
         description: "BGS filename (without extension)",
       },
+      bgs_volume: {
+        type: "integer",
+        description: "BGS volume (0-100, default 90)",
+      },
+      bgs_pitch: {
+        type: "integer",
+        description: "BGS pitch (50-150, default 100)",
+      },
       specify_battleback: {
         type: "boolean",
         description: "Use custom battle background",
@@ -86,6 +94,18 @@ export const EditMapTool: Tool = {
       parallax_loop_y: {
         type: "boolean",
         description: "Loop parallax vertically",
+      },
+      parallax_sx: {
+        type: "integer",
+        description: "Horizontal scroll speed for parallax background",
+      },
+      parallax_sy: {
+        type: "integer",
+        description: "Vertical scroll speed for parallax background",
+      },
+      disable_dashing: {
+        type: "boolean",
+        description: "Disable dashing on this map",
       },
       encounters: {
         type: "array",

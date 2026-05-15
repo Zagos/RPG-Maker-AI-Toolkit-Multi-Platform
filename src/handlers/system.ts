@@ -82,6 +82,61 @@ export async function handleEditSystem(ctx: HandlerContext): Promise<string> {
       updated.push("defeat_me");
     }
 
+    if (input.terms_basic !== undefined) {
+      const terms = (system.terms as Record<string, unknown> | undefined) ?? {};
+      const current = (terms.basic as string[] | undefined) ?? [];
+      const patch = input.terms_basic as Record<string, string>;
+      for (const [idStr, value] of Object.entries(patch)) {
+        const id = parseInt(idStr, 10);
+        if (isNaN(id) || id < 0) continue;
+        while (current.length <= id) current.push("");
+        current[id] = value;
+      }
+      terms.basic = current;
+      system.terms = terms;
+      updated.push("terms_basic");
+    }
+
+    if (input.terms_commands !== undefined) {
+      const terms = (system.terms as Record<string, unknown> | undefined) ?? {};
+      const current = (terms.commands as string[] | undefined) ?? [];
+      const patch = input.terms_commands as Record<string, string>;
+      for (const [idStr, value] of Object.entries(patch)) {
+        const id = parseInt(idStr, 10);
+        if (isNaN(id) || id < 0) continue;
+        while (current.length <= id) current.push("");
+        current[id] = value;
+      }
+      terms.commands = current;
+      system.terms = terms;
+      updated.push("terms_commands");
+    }
+
+    if (input.terms_params !== undefined) {
+      const terms = (system.terms as Record<string, unknown> | undefined) ?? {};
+      const current = (terms.params as string[] | undefined) ?? [];
+      const patch = input.terms_params as Record<string, string>;
+      for (const [idStr, value] of Object.entries(patch)) {
+        const id = parseInt(idStr, 10);
+        if (isNaN(id) || id < 0) continue;
+        while (current.length <= id) current.push("");
+        current[id] = value;
+      }
+      terms.params = current;
+      system.terms = terms;
+      updated.push("terms_params");
+    }
+
+    if (input.terms_messages !== undefined) {
+      const terms = (system.terms as Record<string, unknown> | undefined) ?? {};
+      const messages = (terms.messages as Record<string, string> | undefined) ?? {};
+      const patch = input.terms_messages as Record<string, string>;
+      Object.assign(messages, patch);
+      terms.messages = messages;
+      system.terms = terms;
+      updated.push("terms_messages");
+    }
+
     if (updated.length === 0) {
       return JSON.stringify({ error: "No fields to update. Provide at least one property." });
     }
