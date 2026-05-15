@@ -23,6 +23,32 @@ export async function handleEditClass(ctx: HandlerContext): Promise<string> {
         updates.expParams = ep;
       }
 
+      if (input.note !== undefined) updates.note = input.note;
+      if (input.learnings !== undefined) {
+        const mode = (input.learnings_mode as string | undefined) ?? 'replace';
+        const newLearnings = (input.learnings as Array<{ level: number; skill_id: number; note?: string }>).map(l => ({
+          level: l.level, skillId: l.skill_id, note: l.note ?? ''
+        }));
+        if (mode === 'replace') {
+          updates.learnings = newLearnings;
+        } else if (mode === 'append') {
+          const existing2 = reader.readClass(classId!) as unknown as Record<string, unknown> | null;
+          const cur = (existing2?.learnings as Array<{ level: number; skillId: number; note?: string }> | undefined) ?? [];
+          const merged = [...cur];
+          for (const nl of newLearnings) {
+            const idx2 = merged.findIndex(l => l.level === nl.level);
+            if (idx2 !== -1) merged[idx2] = nl; else merged.push(nl);
+          }
+          updates.learnings = merged.sort((a, b) => a.level - b.level);
+        } else if (mode === 'remove_at_level') {
+          const removeLevel = input.remove_at_level as number | undefined;
+          if (removeLevel === undefined) return JSON.stringify({ error: 'remove_at_level requires remove_at_level parameter' });
+          const existing2 = reader.readClass(classId!) as unknown as Record<string, unknown> | null;
+          const cur = (existing2?.learnings as Array<{ level: number; skillId: number }> | undefined) ?? [];
+          updates.learnings = cur.filter(l => l.level !== removeLevel);
+        }
+      }
+
       writer.updateClass(classId, updates);
       ctx.changeLog.append({ tool: "edit-class", entityType: "Class", entityId: classId, action: "update", summary: `Class ${classId} updated: name='${input.name}'` });
       return JSON.stringify({ success: true, message: `Class ${classId} updated`, class_id: classId });

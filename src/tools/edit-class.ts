@@ -30,6 +30,32 @@ export const EditClassTool: Tool = {
         type: "integer",
         description: "EXP acceleration factor B (expParams[3], default 30)",
       },
+      learnings_mode: {
+        type: "string",
+        enum: ["replace", "append", "remove_at_level"],
+        description: "How to apply learnings changes",
+      },
+      learnings: {
+        type: "array",
+        description: "Skill learning entries",
+        items: {
+          type: "object",
+          properties: {
+            level: { type: "integer" },
+            skill_id: { type: "integer" },
+            note: { type: "string" },
+          },
+          required: ["level", "skill_id"],
+        },
+      },
+      remove_at_level: {
+        type: "integer",
+        description: "When mode=remove_at_level, remove learnings at this level",
+      },
+      note: {
+        type: "string",
+        description: "Note/tag metadata",
+      },
     },
     required: ["name"],
   },

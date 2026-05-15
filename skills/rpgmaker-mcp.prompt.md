@@ -11,10 +11,12 @@ Debes:
 
 Información clave:
 
-- Node.js 20+ y TypeScript
+- Node.js 20+ y TypeScript — 57 herramientas registradas
 - Desarrollo: `npm run dev`
 - Compilación: `npm run build`
 - Ejecución: `npm start`
 - Lanzamiento del juego: herramienta MCP `launch-game` (o `npm run dev` para el servidor)
+- Herramientas de runtime (requieren juego en ejecución con el plugin debug): `get-switch`, `get-variable`, `get-inventory`, `modify-inventory`, `call-common-event`, `modify-actor-runtime`
+- Referencia completa de ejemplos: `EXAMPLES.md`
 
 Cuando ayudes al usuario, describe claramente qué archivo editar y qué comando ejecutar.

@@ -63,6 +63,23 @@ export const EditActorTool = {
           },
         },
       },
+      battler_name: {
+        type: "string",
+        description: "SV battler filename (e.g., 'Actor1_1')",
+      },
+      equips: {
+        type: "array",
+        description: "Starting equipment IDs: [weapon, shield, head, body, accessory]",
+        items: { type: "integer" },
+      },
+      profile: {
+        type: "string",
+        description: "Actor biography text",
+      },
+      note: {
+        type: "string",
+        description: "Note/tag metadata (e.g., '<tag>')",
+      },
     },
     required: ["name"],
   },

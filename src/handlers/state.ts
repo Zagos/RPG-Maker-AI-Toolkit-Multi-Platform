@@ -14,6 +14,12 @@ export async function handleEditState(ctx: HandlerContext): Promise<string> {
   if (input.min_turns !== undefined) updates.minTurns = input.min_turns;
   if (input.max_turns !== undefined) updates.maxTurns = input.max_turns;
   if (input.restriction !== undefined) updates.restriction = input.restriction;
+  if (input.description !== undefined) updates.description = input.description;
+  if (input.overlay !== undefined) updates.overlay = input.overlay;
+  if (input.motion !== undefined) updates.motion = input.motion;
+  if (input.remove_by_walking !== undefined) updates.removeByWalking = input.remove_by_walking;
+  if (input.steps_to_remove !== undefined) updates.stepsToRemove = input.steps_to_remove;
+  if (input.note !== undefined) updates.note = input.note;
 
   try {
     if (stateId) {

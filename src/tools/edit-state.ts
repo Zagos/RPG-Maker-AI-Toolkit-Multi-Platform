@@ -51,6 +51,30 @@ export const EditStateTool: Tool = {
         enum: [0, 1, 2, 3, 4],
         description: "Action restriction: 0=None, 1=Attack Ally, 2=Attack Any, 3=Attack Enemy, 4=Cannot Act",
       },
+      description: {
+        type: "string",
+        description: "State description shown in status screen",
+      },
+      overlay: {
+        type: "integer",
+        description: "Walking animation overlay (0-10)",
+      },
+      motion: {
+        type: "integer",
+        description: "SV battle motion (0-10)",
+      },
+      remove_by_walking: {
+        type: "boolean",
+        description: "Whether the state is removed by walking",
+      },
+      steps_to_remove: {
+        type: "integer",
+        description: "Steps needed to remove state (requires remove_by_walking)",
+      },
+      note: {
+        type: "string",
+        description: "Note/tag metadata",
+      },
     },
     required: ["name"],
   },

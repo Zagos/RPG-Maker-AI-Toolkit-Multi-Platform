@@ -27,6 +27,11 @@ import { handleEditMapEvent, handleDeleteMapEvent } from "./map-event-edit.js";
 import { handleManagePlugins } from "./manage-plugins.js";
 import { handleReadEntity } from "./read-entity.js";
 import { handleEditTileset } from "./tileset.js";
+import { handleEditDropItems } from "./drop-items.js";
+import { handleEditClassLearnings } from "./class-learnings.js";
+import { handleEditVehicle } from "./vehicle.js";
+import { handleGetInventory, handleModifyInventory, handleGetSwitch, handleGetVariable, handleCallCommonEvent, handleModifyActorRuntime } from "./runtime-query.js";
+import { handleReadSystemExtended } from "./system-extended.js";
 
 // All tool handlers except batch-edit (to avoid circular imports)
 export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
@@ -76,4 +81,14 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "execute-script": handleExecuteScript,
   "show-message": handleShowMessage,
   "edit-tileset": handleEditTileset,
+  "edit-drop-items": handleEditDropItems,
+  "edit-class-learnings": handleEditClassLearnings,
+  "edit-vehicle": handleEditVehicle,
+  "get-inventory": handleGetInventory,
+  "modify-inventory": handleModifyInventory,
+  "get-switch": handleGetSwitch,
+  "get-variable": handleGetVariable,
+  "call-common-event": handleCallCommonEvent,
+  "modify-actor-runtime": handleModifyActorRuntime,
+  "read-system-extended": handleReadSystemExtended,
 };
