@@ -6,11 +6,23 @@ export async function handleEditItem(ctx: HandlerContext): Promise<string> {
   const itemId = input.item_id as number | undefined;
   const name = input.name as string;
 
-  const itemData = {
+  const itemData: Record<string, unknown> = {
     name,
     description: (input.description as string | undefined) || "",
     price: (input.price as number | undefined) || 0,
   };
+
+  if (input.icon_index !== undefined) itemData.iconIndex = input.icon_index;
+  if (input.consumable !== undefined) itemData.consumable = input.consumable;
+  if (input.scope !== undefined) itemData.scope = input.scope;
+  if (input.occasion !== undefined) itemData.occasion = input.occasion;
+  if (input.speed !== undefined) itemData.speed = input.speed;
+  if (input.success_rate !== undefined) itemData.successRate = input.success_rate;
+  if (input.repeats !== undefined) itemData.repeats = input.repeats;
+  if (input.tp_gain !== undefined) itemData.tpGain = input.tp_gain;
+  if (input.hit_type !== undefined) itemData.hitType = input.hit_type;
+  if (input.animation_id !== undefined) itemData.animationId = input.animation_id;
+  if (input.note !== undefined) itemData.note = input.note;
 
   const validation = RPGMakerValidator.validateItem(itemData);
   if (!validation.valid) {

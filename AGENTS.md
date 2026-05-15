@@ -6,7 +6,7 @@ Guide for AI agents (and human contributors) working on this codebase.
 
 ## Project at a glance
 
-An MCP server written in **TypeScript ESM** (Node 20+, `"type": "module"`, `.js` extensions in all imports). It exposes 31 tools that read and write RPG Maker MZ project JSON files, plus a runtime control bridge for live game manipulation. Each tool call is stateless — the server creates a fresh Reader/Writer per call.
+An MCP server written in **TypeScript ESM** (Node 20+, `"type": "module"`, `.js` extensions in all imports). It exposes **57 tools** that read and write RPG Maker MZ project JSON files, plus a runtime control bridge for live game manipulation. Each tool call is stateless — the server creates a fresh Reader/Writer per call.
 
 Key invariants:
 - **Never throw from a handler** — always return `JSON.stringify({ error: … })`.
@@ -25,7 +25,13 @@ src/handlers/
   types.ts                   ← HandlerContext interface
   batch-edit.ts              ← imports registry.ts (no circular dep)
   debug.ts                   ← runtime control: launch, battle, save/load, party state, suite
+  runtime-query.ts           ← runtime reads: get-switch/variable, get/modify-inventory,
+                               call-common-event, modify-actor-runtime
   actor.ts / item.ts / …     ← one handler file per tool group
+  drop-items.ts              ← edit-drop-items
+  class-learnings.ts         ← edit-class-learnings
+  vehicle.ts                 ← edit-vehicle
+  system-extended.ts         ← read-system-extended
 src/rpgmaker/
   reader.ts                  ← read-only JSON helpers
   writer.ts                  ← write + backup + prune + validation hooks
@@ -165,6 +171,20 @@ CI runs on Node 20 and 22 via `.github/workflows/ci.yml`.
 
 ---
 
+## Runtime read pattern
+
+`get-switch`, `get-variable`, and `get-inventory` cannot return values via the normal ACK flow. Instead, the handler builds a JS snippet that calls `fetch('http://127.0.0.1:9001/gamestate', { method:'POST', body: JSON.stringify({ ...standardState, queryResult: <value> }) })` inside the game. Then the handler calls `debugBridge.waitForGameState()`, which resolves with the full payload including `queryResult`. Access it as:
+
+```typescript
+debugBridge.setCommand("execute_script", { code: script });
+const state = await debugBridge.waitForGameState(8000);
+const qr = (state as unknown as Record<string, unknown>).queryResult;
+```
+
+The `queryResult` field is not declared in `GameState`; cast via `as unknown as Record<string,unknown>` to read it. Always call `waitForGameState` **before** `setCommand` to avoid a race condition (it nulls `gameState` synchronously before its first poll).
+
+---
+
 ## Common mistakes to avoid
 
 | Mistake | Why it breaks |
@@ -176,6 +196,8 @@ CI runs on Node 20 and 22 via `.github/workflows/ci.yml`.
 | Writing to `MapInfos.json` without the 7 required fields | `writer.writeMap` will throw before touching the file |
 | Plugin filenames with `..` or special chars | `writer.writePlugin` throws; sanitize before calling |
 | Adding `"batch-edit"` to `registry.ts` | Creates circular import — add it only in `index.ts` |
+| Using `waitForAck` for runtime read tools | ACK doesn't carry a return value — use `waitForGameState` with the fetch-into-gamestate pattern |
+| Calling `waitForGameState` after `setCommand` | Race: game may respond before the poll loop starts — call `waitForGameState` first |
 
 ---
 

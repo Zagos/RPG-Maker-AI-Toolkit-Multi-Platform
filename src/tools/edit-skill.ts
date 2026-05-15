@@ -65,6 +65,50 @@ export const EditSkillTool: Tool = {
         type: "integer",
         description: "Base success rate (0-100)",
       },
+      stype_id: {
+        type: "integer",
+        description: "Skill type ID",
+      },
+      required_wtype_id1: {
+        type: "integer",
+        description: "Required weapon type 1 (0=any)",
+      },
+      required_wtype_id2: {
+        type: "integer",
+        description: "Required weapon type 2 (0=any)",
+      },
+      tp_gain: {
+        type: "integer",
+        description: "TP gained when skill is used",
+      },
+      repeats: {
+        type: "integer",
+        description: "Number of times the effect is applied",
+      },
+      hit_type: {
+        type: "integer",
+        description: "Hit type: 0=Certain,1=Physical,2=Magical",
+      },
+      damage_formula: {
+        type: "string",
+        description: "Damage formula (e.g., 'a.atk * 4 - b.def * 2')",
+      },
+      damage_element_id: {
+        type: "integer",
+        description: "Element ID for damage (0=none)",
+      },
+      damage_variance: {
+        type: "integer",
+        description: "Damage variance % (0-100)",
+      },
+      damage_critical: {
+        type: "boolean",
+        description: "Whether damage can be critical",
+      },
+      note: {
+        type: "string",
+        description: "Note/tag metadata",
+      },
     },
     required: ["name"],
   },

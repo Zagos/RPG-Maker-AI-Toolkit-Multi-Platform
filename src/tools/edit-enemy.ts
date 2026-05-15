@@ -83,6 +83,14 @@ export const EditEnemyTool = {
           },
         },
       },
+      battler_hue: {
+        type: "integer",
+        description: "Battler image hue (0-360)",
+      },
+      note: {
+        type: "string",
+        description: "Note/tag metadata",
+      },
     },
     required: ["name"],
   },

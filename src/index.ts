@@ -56,6 +56,15 @@ import { ReadEntityTool } from "./tools/read-entity.js";
 import { ExecuteScriptTool } from "./tools/execute-script.js";
 import { ShowMessageTool } from "./tools/show-message.js";
 import { EditTilesetTool } from "./tools/edit-tileset.js";
+import { EditDropItemsTool } from "./tools/edit-drop-items.js";
+import { EditClassLearningsTool } from "./tools/edit-class-learnings.js";
+import { EditVehicleTool } from "./tools/edit-vehicle.js";
+import { GetInventoryTool } from "./tools/get-inventory.js";
+import { ModifyInventoryTool } from "./tools/modify-inventory.js";
+import { GetSwitchTool, GetVariableTool } from "./tools/get-runtime-value.js";
+import { CallCommonEventTool } from "./tools/call-common-event.js";
+import { ModifyActorRuntimeTool } from "./tools/modify-actor-runtime.js";
+import { ReadSystemExtendedTool } from "./tools/read-system-extended.js";
 import { ReadMapTilesTool } from "./tools/read-map-tiles.js";
 import { PaintMapTilesTool } from "./tools/paint-map-tiles.js";
 import { FillMapRegionTool } from "./tools/fill-map-region.js";
@@ -239,6 +248,16 @@ const tools: Tool[] = [
   ExecuteScriptTool,
   ShowMessageTool,
   EditTilesetTool,
+  EditDropItemsTool,
+  EditClassLearningsTool,
+  EditVehicleTool,
+  GetInventoryTool,
+  ModifyInventoryTool,
+  GetSwitchTool,
+  GetVariableTool,
+  CallCommonEventTool,
+  ModifyActorRuntimeTool,
+  ReadSystemExtendedTool,
   ReadMapTilesTool,
   PaintMapTilesTool,
   FillMapRegionTool,

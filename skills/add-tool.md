@@ -47,3 +47,30 @@ Scaffold a complete new MCP tool end-to-end following the project conventions.
    ```
 
 Do not add features beyond what was requested. One tool, one handler, one test file.
+
+---
+
+## Runtime read tools (special pattern)
+
+If the tool must **read a value from the running game** (not just send a command), use the gamestate fetch pattern instead of `waitForAck`:
+
+```typescript
+const script = `(function(){
+  var v = /* the value to read */;
+  fetch('http://127.0.0.1:9001/gamestate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mapId: $gameMap.mapId(), playerX: $gamePlayer.x, playerY: $gamePlayer.y,
+      gold: $gameParty.gold(), partyMembers: [], inBattle: $gameParty.inBattle(),
+      timestamp: new Date().toISOString(), queryResult: v
+    })
+  });
+})();`;
+const waitPromise = debugBridge.waitForGameState(8000);   // ← call BEFORE setCommand
+debugBridge.setCommand("execute_script", { code: script });
+const state = await waitPromise;
+const result = (state as unknown as Record<string, unknown>).queryResult;
+```
+
+`waitForGameState` must be started **before** `setCommand` — it nulls `gameState` synchronously, then polls every 200 ms. Calling it after risks missing the response.

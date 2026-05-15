@@ -7,11 +7,18 @@ Este agente está diseñado para trabajar con el servidor de contexto de modelo 
 
 Capacidades principales:
 
-- Leer y escribir datos del juego (actores, items, enemigos, estados, etc.)
+- Leer y escribir datos del juego (actores, items, enemigos, habilidades, clases, estados, vehículos, etc.)
 - Crear plugins y contenido dinámico para RPG Maker MZ
 - Generar y editar diálogos, eventos, y escenas
 - Orientar sobre la configuración del proyecto y el uso de `.env`
-- Control en tiempo real del juego en ejecución vía bridge HTTP: leer estado del mapa y del grupo, activar switches/variables, teleportar al jugador, guardar/cargar partida, ajustar HP/MP/estados del grupo, iniciar batallas individuales o suites de N combates con estadísticas agregadas
+- Control en tiempo real del juego en ejecución vía bridge HTTP:
+  - Leer estado del mapa y del grupo (`get-game-state`)
+  - Leer y escribir switches y variables (`get-switch`, `get-variable`, `set-switch`, `set-variable`)
+  - Leer y modificar el inventario del grupo (`get-inventory`, `modify-inventory`)
+  - Activar eventos comunes (`call-common-event`)
+  - Modificar estadísticas de actores en tiempo real (`modify-actor-runtime`)
+  - Teleportar al jugador, guardar/cargar partida, ajustar HP/MP/estados del grupo
+  - Iniciar batallas individuales o suites de N combates con estadísticas agregadas
 
 Reglas de uso:
 
