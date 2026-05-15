@@ -67,6 +67,8 @@ import { handleEditMapInfo } from "./map-info.js";
 import { handleSearchEntity } from "./search-entity.js";
 import { handleDuplicateEntity } from "./duplicate-entity.js";
 import { handleExportProjectSummary } from "./project-summary.js";
+import { handleBatchCreateEntities } from "./batch-create-entities.js";
+import { handleBatchDeleteEntities } from "./batch-delete-entities.js";
 
 // All tool handlers except batch-edit (to avoid circular imports)
 export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
@@ -162,4 +164,6 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "search-entity": handleSearchEntity,
   "duplicate-entity": handleDuplicateEntity,
   "export-project-summary": handleExportProjectSummary,
+  "batch-create-entities": handleBatchCreateEntities,
+  "batch-delete-entities": handleBatchDeleteEntities,
 };

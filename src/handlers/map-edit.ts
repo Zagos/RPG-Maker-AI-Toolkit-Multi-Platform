@@ -42,9 +42,11 @@ export async function handleEditMap(ctx: HandlerContext): Promise<string> {
 
     if (input.autoplay_bgs !== undefined) { map.autoplayBgs = input.autoplay_bgs; updated.push("autoplay_bgs"); }
 
-    if (input.bgs_name !== undefined) {
+    if (input.bgs_name !== undefined || input.bgs_volume !== undefined || input.bgs_pitch !== undefined) {
       const bgs = { ...((map.bgs ?? { name: "", pan: 0, pitch: 100, volume: 90 }) as Record<string, unknown>) };
-      bgs.name = input.bgs_name;
+      if (input.bgs_name !== undefined) bgs.name = input.bgs_name;
+      if (input.bgs_volume !== undefined) bgs.volume = input.bgs_volume;
+      if (input.bgs_pitch !== undefined) bgs.pitch = input.bgs_pitch;
       map.bgs = bgs;
       updated.push("bgs");
     }
@@ -56,6 +58,9 @@ export async function handleEditMap(ctx: HandlerContext): Promise<string> {
     if (input.parallax_show !== undefined) { map.parallaxShow = input.parallax_show; updated.push("parallax_show"); }
     if (input.parallax_loop_x !== undefined) { map.parallaxLoopX = input.parallax_loop_x; updated.push("parallax_loop_x"); }
     if (input.parallax_loop_y !== undefined) { map.parallaxLoopY = input.parallax_loop_y; updated.push("parallax_loop_y"); }
+    if (input.parallax_sx !== undefined) { map.parallaxSx = input.parallax_sx; updated.push("parallax_sx"); }
+    if (input.parallax_sy !== undefined) { map.parallaxSy = input.parallax_sy; updated.push("parallax_sy"); }
+    if (input.disable_dashing !== undefined) { map.disableDashing = input.disable_dashing; updated.push("disable_dashing"); }
 
     if (input.encounters !== undefined) {
       const encounters = input.encounters as Array<{ enemy_id: number; weight?: number }>;

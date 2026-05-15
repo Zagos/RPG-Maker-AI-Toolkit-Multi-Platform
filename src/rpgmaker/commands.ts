@@ -40,7 +40,20 @@ export type MapEventCommandInput = {
     | "fade-out"
     | "fade-in"
     | "comment"
-    | "change-variable";
+    | "change-variable"
+    | "input-number"
+    | "select-item"
+    | "show-scrolling-text"
+    | "name-input"
+    | "tint-screen"
+    | "shake-screen"
+    | "flash-screen"
+    | "play-bgs"
+    | "change-exp"
+    | "change-level"
+    | "change-skill"
+    | "change-equipment"
+    | "change-class";
   data?: string | Record<string, unknown>;
 };
 
@@ -382,6 +395,103 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
       const opMap: Record<string, number> = { set: 0, add: 1, sub: 2, mul: 3, div: 4, mod: 5 };
       const operation = opMap[String(obj["operation"] ?? "set")] ?? 0;
       return [{ code: 122, indent: 0, parameters: [id, id, operation, 0, operand] }];
+    }
+
+    case "input-number": {
+      const variable_id = Number(obj["variable_id"] ?? 1);
+      const digits = Number(obj["digits"] ?? 1);
+      return [{ code: 103, indent: 0, parameters: [variable_id, digits] }];
+    }
+
+    case "select-item": {
+      const variable_id = Number(obj["variable_id"] ?? 1);
+      const item_type = Number(obj["item_type"] ?? 2);
+      return [{ code: 104, indent: 0, parameters: [variable_id, item_type] }];
+    }
+
+    case "show-scrolling-text": {
+      const speed = Number(obj["speed"] ?? 2);
+      const no_fast = Boolean(obj["no_fast"] ?? false);
+      const text = typeof rawData === "string" ? rawData : String(obj["text"] ?? "");
+      const lines = text.split(/\r?\n/);
+      return [
+        { code: 105, indent: 0, parameters: [speed, no_fast] },
+        ...lines.map((line) => ({ code: 405, indent: 0, parameters: [line] })),
+      ];
+    }
+
+    case "name-input": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const max_chars = Number(obj["max_chars"] ?? 8);
+      return [{ code: 303, indent: 0, parameters: [actor_id, max_chars] }];
+    }
+
+    case "tint-screen": {
+      const tone = Array.isArray(obj["tone"]) ? obj["tone"] as number[] : [-68, -68, 0, 68];
+      const duration = Number(obj["duration"] ?? 60);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 223, indent: 0, parameters: [tone, duration, wait] }];
+    }
+
+    case "shake-screen": {
+      const power = Number(obj["power"] ?? 5);
+      const speed = Number(obj["speed"] ?? 5);
+      const duration = Number(obj["duration"] ?? 60);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 225, indent: 0, parameters: [power, speed, duration, wait] }];
+    }
+
+    case "flash-screen": {
+      const color = Array.isArray(obj["color"]) ? obj["color"] as number[] : [255, 255, 255, 68];
+      const duration = Number(obj["duration"] ?? 60);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 224, indent: 0, parameters: [color, duration, wait] }];
+    }
+
+    case "play-bgs": {
+      const name = typeof rawData === "string" && rawData ? rawData : String(obj["name"] ?? "");
+      return [{
+        code: 245,
+        indent: 0,
+        parameters: [{ name, volume: Number(obj["volume"] ?? 90), pitch: Number(obj["pitch"] ?? 100), pan: Number(obj["pan"] ?? 0) }],
+      }];
+    }
+
+    case "change-exp": {
+      const actor_id = Number(obj["actor_id"] ?? 0);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 0);
+      const show_level_up = Boolean(obj["show_level_up"] ?? true);
+      return [{ code: 315, indent: 0, parameters: [0, actor_id, 0, 0, operation, amount, show_level_up] }];
+    }
+
+    case "change-level": {
+      const actor_id = Number(obj["actor_id"] ?? 0);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 1);
+      const show_level_up = Boolean(obj["show_level_up"] ?? true);
+      return [{ code: 316, indent: 0, parameters: [0, actor_id, 0, 0, operation, amount, show_level_up] }];
+    }
+
+    case "change-skill": {
+      const actor_id = Number(obj["actor_id"] ?? 0);
+      const operation = String(obj["operation"] ?? "learn") === "forget" ? 1 : 0;
+      const skill_id = Number(obj["skill_id"] ?? 1);
+      return [{ code: 318, indent: 0, parameters: [0, actor_id, operation, skill_id] }];
+    }
+
+    case "change-equipment": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const slot_id = Number(obj["slot_id"] ?? 0);
+      const equip_id = Number(obj["equip_id"] ?? 0);
+      return [{ code: 319, indent: 0, parameters: [actor_id, slot_id, equip_id] }];
+    }
+
+    case "change-class": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const class_id = Number(obj["class_id"] ?? 1);
+      const keep_exp = Boolean(obj["keep_exp"] ?? false);
+      return [{ code: 321, indent: 0, parameters: [actor_id, class_id, keep_exp] }];
     }
 
     default:

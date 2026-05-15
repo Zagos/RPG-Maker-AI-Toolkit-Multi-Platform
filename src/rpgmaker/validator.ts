@@ -285,12 +285,134 @@ export class RPGMakerValidator {
     return { valid: errors.length === 0, errors, warnings };
   }
 
+  static validateWeapon(weapon: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!weapon.name || typeof weapon.name !== "string") {
+      errors.push("Weapon must have a 'name' property");
+    }
+    if (weapon.price !== undefined && (typeof weapon.price !== "number" || weapon.price < 0)) {
+      errors.push("Weapon 'price' must be a non-negative number");
+    }
+    if (weapon.wtypeId !== undefined && typeof weapon.wtypeId !== "number") {
+      errors.push("Weapon 'wtypeId' must be a number");
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateArmor(armor: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!armor.name || typeof armor.name !== "string") {
+      errors.push("Armor must have a 'name' property");
+    }
+    if (armor.price !== undefined && (typeof armor.price !== "number" || armor.price < 0)) {
+      errors.push("Armor 'price' must be a non-negative number");
+    }
+    if (armor.atypeId !== undefined && typeof armor.atypeId !== "number") {
+      errors.push("Armor 'atypeId' must be a number");
+    }
+    if (armor.etypeId !== undefined && typeof armor.etypeId !== "number") {
+      errors.push("Armor 'etypeId' must be a number (0=weapon slot, 1=shield, 2=head, 3=body, 4=accessory)");
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateClass(cls: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!cls.name || typeof cls.name !== "string") {
+      errors.push("Class must have a 'name' property");
+    }
+    if (cls.traits !== undefined && !Array.isArray(cls.traits)) {
+      errors.push("Class 'traits' must be an array");
+    }
+    if (cls.learnings !== undefined && !Array.isArray(cls.learnings)) {
+      errors.push("Class 'learnings' must be an array");
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateState(state: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!state.name || typeof state.name !== "string") {
+      errors.push("State must have a 'name' property");
+    }
+    if (state.priority !== undefined && typeof state.priority !== "number") {
+      errors.push("State 'priority' must be a number");
+    }
+    if (state.minTurns !== undefined && state.maxTurns !== undefined) {
+      if (typeof state.minTurns === "number" && typeof state.maxTurns === "number" && state.minTurns > state.maxTurns) {
+        errors.push("State 'minTurns' cannot be greater than 'maxTurns'");
+      }
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateTrait(trait: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (typeof trait.code !== "number") {
+      errors.push("Trait must have a numeric 'code' field");
+    }
+    if (trait.dataId !== undefined && typeof trait.dataId !== "number") {
+      errors.push("Trait 'dataId' must be a number");
+    }
+    if (trait.value !== undefined && typeof trait.value !== "number") {
+      errors.push("Trait 'value' must be a number");
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateEffect(effect: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (typeof effect.code !== "number") {
+      errors.push("Effect must have a numeric 'code' field");
+    }
+    if (effect.dataId !== undefined && typeof effect.dataId !== "number") {
+      errors.push("Effect 'dataId' must be a number");
+    }
+    if (effect.value1 !== undefined && typeof effect.value1 !== "number") {
+      errors.push("Effect 'value1' must be a number");
+    }
+    if (effect.value2 !== undefined && typeof effect.value2 !== "number") {
+      errors.push("Effect 'value2' must be a number");
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateAudio(audio: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!audio.name || typeof audio.name !== "string") {
+      errors.push("Audio must have a 'name' property");
+    }
+    if (audio.volume !== undefined) {
+      if (typeof audio.volume !== "number" || audio.volume < 0 || audio.volume > 100) {
+        warnings.push("Audio 'volume' should be 0-100");
+      }
+    }
+    if (audio.pitch !== undefined) {
+      if (typeof audio.pitch !== "number" || audio.pitch < 50 || audio.pitch > 150) {
+        warnings.push("Audio 'pitch' should be 50-150");
+      }
+    }
+    if (audio.pan !== undefined) {
+      if (typeof audio.pan !== "number" || audio.pan < -100 || audio.pan > 100) {
+        warnings.push("Audio 'pan' should be -100 to 100");
+      }
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
   /**
    * Valida múltiples datos
    */
   static validateBatch(
     items: Record<string, unknown>[],
-    type: "actor" | "item" | "enemy" | "skill"
+    type: "actor" | "item" | "enemy" | "skill" | "weapon" | "armor" | "class" | "state"
   ): ValidationResult {
     const allErrors: string[] = [];
     const allWarnings: string[] = [];
@@ -310,6 +432,18 @@ export class RPGMakerValidator {
           break;
         case "skill":
           result = this.validateSkill(item);
+          break;
+        case "weapon":
+          result = this.validateWeapon(item);
+          break;
+        case "armor":
+          result = this.validateArmor(item);
+          break;
+        case "class":
+          result = this.validateClass(item);
+          break;
+        case "state":
+          result = this.validateState(item);
           break;
         default:
           continue;

@@ -100,6 +100,8 @@ import { EditMapInfoTool } from "./tools/edit-map-info.js";
 import { SearchEntityTool } from "./tools/search-entity.js";
 import { DuplicateEntityTool } from "./tools/duplicate-entity.js";
 import { ExportProjectSummaryTool } from "./tools/project-summary.js";
+import { BatchCreateEntitiesTool } from "./tools/batch-create-entities.js";
+import { BatchDeleteEntitiesTool } from "./tools/batch-delete-entities.js";
 
 // Handlers
 import type { HandlerContext } from "./handlers/types.js";
@@ -312,6 +314,8 @@ const tools: Tool[] = [
   SearchEntityTool,
   DuplicateEntityTool,
   ExportProjectSummaryTool,
+  BatchCreateEntitiesTool,
+  BatchDeleteEntitiesTool,
   {
     name: "get-change-history",
     description: "Read the MCP change log. Returns a newest-first list of all tool calls that modified RPG Maker project data.",

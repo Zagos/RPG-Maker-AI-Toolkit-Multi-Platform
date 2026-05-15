@@ -13,7 +13,7 @@ const audioSchema = {
 export const EditSystemTool: Tool = {
   name: "edit-system",
   description:
-    "Edit global game settings in System.json: title, currency, initial party, player start position, switch/variable names, and audio tracks.",
+    "Edit global game settings in System.json: title, currency, initial party, player start position, switch/variable names, audio tracks, and UI terms (basic, params, commands, messages).",
   inputSchema: {
     type: "object",
     properties: {
@@ -67,6 +67,26 @@ export const EditSystemTool: Tool = {
       defeat_me: {
         ...audioSchema,
         description: "Music effect played after losing a battle",
+      },
+      terms_basic: {
+        type: "object",
+        description: "Map of index→value for basic UI terms (0=Level, 1=Lv, 2=HP, 3=HP short, 4=MP, 5=MP short, 6=TP, 7=TP short, 8=EXP, 9=EXP short)",
+        additionalProperties: { type: "string" },
+      },
+      terms_params: {
+        type: "object",
+        description: "Map of index→value for parameter names (0=Max HP, 1=Max MP, 2=ATK, 3=DEF, 4=MAT, 5=MDF, 6=AGI, 7=LUK)",
+        additionalProperties: { type: "string" },
+      },
+      terms_commands: {
+        type: "object",
+        description: "Map of index→value for menu command labels (0=Fight, 1=Escape, 2=Attack, 3=Guard, 4=Item, 5=Skill, ...)",
+        additionalProperties: { type: "string" },
+      },
+      terms_messages: {
+        type: "object",
+        description: "Map of message key→value for battle/system messages (e.g. { \"actionFailure\": \"Miss!\", \"actorDamage\": \"%1 took %2 damage!\" })",
+        additionalProperties: { type: "string" },
       },
     },
     required: [],

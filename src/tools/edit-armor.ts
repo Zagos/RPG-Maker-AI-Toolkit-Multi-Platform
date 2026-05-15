@@ -22,6 +22,10 @@ export const EditArmorTool: Tool = {
         type: "integer",
         description: "Armor type ID (1=General Armor, 2=Magic Armor, 3=Light Armor, 4=Heavy Armor, 5=Small Shield, 6=Large Shield)",
       },
+      etype_id: {
+        type: "integer",
+        description: "Equipment slot type ID (1=weapon, 2=shield, 3=head, 4=body, 5=accessory)",
+      },
       price: {
         type: "integer",
         description: "Purchase price in gold",

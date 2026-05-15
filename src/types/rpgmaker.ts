@@ -276,3 +276,87 @@ export interface RPGProject {
     states?: RPGState[];
   };
 }
+
+export interface RPGTileset {
+  id: number;
+  name: string;
+  mode: number; // 0=world, 1=area, 2=vx
+  tilesetNames: string[]; // 9 elements
+  flags: number[];
+  note: string;
+}
+
+export interface RPGAnimationFrame {
+  cellData: number[][];
+}
+
+export interface RPGAnimationTiming {
+  flashColor: number[];
+  flashDuration: number;
+  flashScope: number;
+  frame: number;
+  se: { name: string; pitch: number; volume: number };
+}
+
+export interface RPGAnimation {
+  id: number;
+  name: string;
+  animation1Hue: number;
+  animation1Name: string;
+  animation2Hue: number;
+  animation2Name: string;
+  frames: RPGAnimationFrame[];
+  position: number; // 0=head, 1=center, 2=foot, 3=screen
+  timings: RPGAnimationTiming[];
+}
+
+export interface RPGCommonEvent {
+  id: number;
+  name: string;
+  trigger: number; // 0=none, 1=autorun, 2=parallel
+  switchId: number;
+  list: RPGEventCommand[];
+}
+
+export interface RPGTroopMember {
+  enemyId: number;
+  x: number;
+  y: number;
+  hidden: boolean;
+}
+
+export interface RPGTroopPage {
+  conditions: {
+    actorHp: number;
+    actorId: number;
+    actorValid: boolean;
+    enemyHp: number;
+    enemyIndex: number;
+    enemyValid: boolean;
+    switchId: number;
+    switchValid: boolean;
+    turnA: number;
+    turnB: number;
+    turnEnding: boolean;
+    turnValid: boolean;
+  };
+  list: RPGEventCommand[];
+  span: number; // 0=battle, 1=turn, 2=moment
+}
+
+export interface RPGTroop {
+  id: number;
+  name: string;
+  members: RPGTroopMember[];
+  pages: RPGTroopPage[];
+}
+
+export interface RPGMapInfo {
+  id: number;
+  name: string;
+  parentId: number;
+  order: number;
+  expanded: boolean;
+  scrollX: number;
+  scrollY: number;
+}
