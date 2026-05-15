@@ -32,6 +32,23 @@ import { handleEditClassLearnings } from "./class-learnings.js";
 import { handleEditVehicle } from "./vehicle.js";
 import { handleGetInventory, handleModifyInventory, handleGetSwitch, handleGetVariable, handleCallCommonEvent, handleModifyActorRuntime } from "./runtime-query.js";
 import { handleReadSystemExtended } from "./system-extended.js";
+import { handleReadMapTiles } from "./map-tiles-read.js";
+import { handlePaintMapTiles } from "./map-tiles-paint.js";
+import { handleFillMapRegion } from "./map-tiles-fill.js";
+import { handleReadTileset } from "./tileset-read.js";
+import { handleCreateTileset } from "./tileset-create.js";
+import { handleEditTilesetProperties } from "./tileset-edit-properties.js";
+import { handleGenerateCharacter } from "./generate-character.js";
+import { handleEditTraits } from "./traits.js";
+import { handlePaintMapRegion } from "./map-paint.js";
+import { handleEditTroopEvents } from "./troop-events.js";
+import { handleListResources } from "./resources.js";
+import { handleEditEffects } from "./effects.js";
+import { handleEditEventPage } from "./event-page.js";
+import { handleEditPluginParameters } from "./plugin-parameters.js";
+import { handleEditEnemyActions } from "./enemy-actions.js";
+import { handleDeleteEntity } from "./delete-entity.js";
+import { handleReadAnimation, handleEditAnimation } from "./animation.js";
 
 // All tool handlers except batch-edit (to avoid circular imports)
 export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
@@ -91,4 +108,22 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "call-common-event": handleCallCommonEvent,
   "modify-actor-runtime": handleModifyActorRuntime,
   "read-system-extended": handleReadSystemExtended,
+  "read-map-tiles": handleReadMapTiles,
+  "paint-map-tiles": handlePaintMapTiles,
+  "fill-map-region": handleFillMapRegion,
+  "read-tileset": handleReadTileset,
+  "create-tileset": handleCreateTileset,
+  "edit-tileset-properties": handleEditTilesetProperties,
+  "generate-character": handleGenerateCharacter,
+  "edit-traits": handleEditTraits,
+  "paint-map-region": handlePaintMapRegion,
+  "edit-troop-events": handleEditTroopEvents,
+  "list-resources": handleListResources,
+  "edit-effects": handleEditEffects,
+  "edit-event-page": handleEditEventPage,
+  "edit-plugin-parameters": handleEditPluginParameters,
+  "edit-enemy-actions": handleEditEnemyActions,
+  "delete-entity": handleDeleteEntity,
+  "read-animation": handleReadAnimation,
+  "edit-animation": handleEditAnimation,
 };

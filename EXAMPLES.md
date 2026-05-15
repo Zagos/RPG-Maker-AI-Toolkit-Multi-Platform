@@ -10,6 +10,7 @@
 - [Data & System](#data--system)
 - [Characters & Enemies](#characters--enemies)
 - [Drop Tables](#drop-tables)
+- [Traits & Effects](#traits--effects)
 - [Equipment & Items](#equipment--items)
 - [Skills](#skills)
 - [Classes & Learnings](#classes--learnings)
@@ -17,8 +18,10 @@
 - [Troops](#troops)
 - [Common Events](#common-events)
 - [Maps & Events](#maps--events)
+- [Map Tile Painting](#map-tile-painting)
 - [Vehicles](#vehicles)
 - [Tilesets](#tilesets)
+- [Animations](#animations)
 - [Plugins](#plugins)
 - [Runtime Control](#runtime-control)
 - [Backups & Batch](#backups--batch)
@@ -147,6 +150,43 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
 
 ---
 
+### `list-resources`
+
+**EN:** "Show me all character sprite sheets available in the project."
+**ES:** "Muéstrame todas las hojas de sprites de personajes disponibles en el proyecto."
+```json
+{ "category": "characters" }
+```
+**EN:** "List all available BGM tracks I can use for maps."
+**ES:** "Lista todas las pistas BGM disponibles para usar en los mapas."
+```json
+{ "category": "bgm" }
+```
+**EN:** "Show me every graphic and audio resource in the project."
+**ES:** "Muéstrame todos los recursos gráficos y de audio del proyecto."
+```json
+{ "category": "all" }
+```
+Categories: `characters` `faces` `battlers` `sv_actors` `tilesets` `parallaxes` `pictures` `bgm` `bgs` `se` `me` `all`
+
+---
+
+### `delete-entity`
+
+**EN:** "Delete the unused test actor (Actor 8) from the database."
+**ES:** "Elimina el actor de prueba no utilizado (Actor 8) de la base de datos."
+```json
+{ "entity_type": "Actor", "entity_id": 8, "confirm": true }
+```
+**EN:** "Remove enemy 12 — it was a duplicate that I no longer need."
+**ES:** "Elimina al enemigo 12 — era un duplicado que ya no necesito."
+```json
+{ "entity_type": "Enemy", "entity_id": 12, "confirm": true }
+```
+Types: `Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `CommonEvent`
+
+---
+
 ## Characters & Enemies
 
 ### `edit-actor`
@@ -218,6 +258,78 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
 
 ---
 
+### `generate-character`
+
+**EN:** "Generate a complete warrior character named 'Gareth' starting at level 5, with a backstory about a former knight."
+**ES:** "Genera un personaje guerrero completo llamado 'Gareth' empezando en nivel 5, con una historia de fondo sobre un caballero retirado."
+```json
+{
+  "name": "Gareth",
+  "archetype": "warrior",
+  "nickname": "Iron Guard",
+  "initial_level": 5,
+  "max_level": 99,
+  "profile": "A former knight who turned his back on the kingdom to protect the common people."
+}
+```
+**EN:** "Create a healer character called 'Lyra' with the healer archetype and assign her a specific face graphic."
+**ES:** "Crea un personaje sanadora llamado 'Lyra' con el arquetipo de sanadora y asígnale un gráfico de cara específico."
+```json
+{
+  "name": "Lyra",
+  "archetype": "healer",
+  "nickname": "Light Weaver",
+  "face_name": "Actor2",
+  "face_index": 3,
+  "character_name": "Actor2",
+  "character_index": 3
+}
+```
+Archetypes: `warrior` `mage` `rogue` `healer` `paladin` `ranger`
+
+---
+
+### `edit-enemy-actions`
+
+**EN:** "Set the Slime (enemy 1) to always use Attack (skill 1) with high priority."
+**ES:** "Haz que el Slime (enemigo 1) siempre use Ataque (habilidad 1) con alta prioridad."
+```json
+{
+  "enemy_id": 1,
+  "mode": "replace",
+  "actions": [
+    { "skill_id": 1, "rating": 5, "condition_type": 0, "condition_param1": 0, "condition_param2": 0 }
+  ]
+}
+```
+**EN:** "Configure the Dragon boss (enemy 8) with multiple conditional actions: normal attack always, fire breath when HP > 50%, and a desperate attack when HP ≤ 25%."
+**ES:** "Configura al jefe Dragón (enemigo 8) con acciones condicionales: ataque normal siempre, aliento de fuego cuando HP > 50%, y ataque desesperado cuando HP ≤ 25%."
+```json
+{
+  "enemy_id": 8,
+  "mode": "replace",
+  "actions": [
+    { "skill_id": 1,  "rating": 5, "condition_type": 0, "condition_param1": 0,  "condition_param2": 0 },
+    { "skill_id": 10, "rating": 7, "condition_type": 2, "condition_param1": 50, "condition_param2": 0 },
+    { "skill_id": 15, "rating": 9, "condition_type": 2, "condition_param1": 25, "condition_param2": 0 }
+  ]
+}
+```
+**EN:** "Add a healing skill (skill 5) to enemy 4 when its HP drops below 30%, without changing its other actions."
+**ES:** "Añade una habilidad de curación (habilidad 5) al enemigo 4 cuando su HP baje del 30%, sin cambiar sus otras acciones."
+```json
+{
+  "enemy_id": 4,
+  "mode": "append",
+  "actions": [
+    { "skill_id": 5, "rating": 8, "condition_type": 2, "condition_param1": 30, "condition_param2": 0 }
+  ]
+}
+```
+`condition_type`: `0`=always `1`=turn X/Y `2`=HP≤% `3`=MP≤% `4`=state `5`=party level≥ `6`=switch ON
+
+---
+
 ## Drop Tables
 
 ### `edit-drop-items`
@@ -249,6 +361,88 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
 ```json
 { "enemy_id": 2, "mode": "clear" }
 ```
+
+---
+
+## Traits & Effects
+
+### `edit-traits`
+
+**EN:** "Add fire element resistance (50%) to the Dragon enemy (enemy 8) and make it immune to poison (state 4)."
+**ES:** "Añade resistencia al elemento fuego (50%) al enemigo Dragón (enemigo 8) y hazlo inmune al veneno (estado 4)."
+```json
+{
+  "entity_type": "Enemy",
+  "entity_id": 8,
+  "mode": "replace",
+  "traits": [
+    { "code": 11, "data_id": 2, "value": 0.5 },
+    { "code": 14, "data_id": 4, "value": 0 }
+  ]
+}
+```
+**EN:** "Give Actor 1 a trait that equips sword types (weapon type 1) and adds +10% ATK rate."
+**ES:** "Dale al Actor 1 un rasgo que permita equipar espadas (tipo arma 1) y añada +10% de tasa de ATK."
+```json
+{
+  "entity_type": "Actor",
+  "entity_id": 1,
+  "mode": "append",
+  "traits": [
+    { "code": 55, "data_id": 1, "value": 1 },
+    { "code": 21, "data_id": 2, "value": 1.1 }
+  ]
+}
+```
+**EN:** "Clear all traits from armor 5 and start fresh."
+**ES:** "Borra todos los rasgos de la armadura 5 y empieza desde cero."
+```json
+{ "entity_type": "Armor", "entity_id": 5, "mode": "clear" }
+```
+`entity_type`: `Actor` `Class` `Enemy` `Weapon` `Armor` `State`
+
+---
+
+### `edit-effects`
+
+**EN:** "Set Potion (item 1) to restore 20% of max HP plus 50 flat HP."
+**ES:** "Haz que la Poción (ítem 1) restaure el 20% del HP máximo más 50 HP fijo."
+```json
+{
+  "entity_type": "Item",
+  "entity_id": 1,
+  "mode": "replace",
+  "effects": [
+    { "code": 11, "data_id": 0, "value1": 0.2, "value2": 50 }
+  ]
+}
+```
+**EN:** "Add an effect to Skill 10 (Thunder Blade) that inflicts the Paralysis state (state 6) with 30% chance."
+**ES:** "Añade un efecto a la Habilidad 10 (Filo del Trueno) que aplique el estado Parálisis (estado 6) con un 30% de probabilidad."
+```json
+{
+  "entity_type": "Skill",
+  "entity_id": 10,
+  "mode": "append",
+  "effects": [
+    { "code": 21, "data_id": 6, "value1": 0.3, "value2": 0 }
+  ]
+}
+```
+**EN:** "Replace the effects on item 5 so it fully restores both HP (100%) and MP (100%)."
+**ES:** "Reemplaza los efectos del ítem 5 para que restaure completamente tanto HP (100%) como MP (100%)."
+```json
+{
+  "entity_type": "Item",
+  "entity_id": 5,
+  "mode": "replace",
+  "effects": [
+    { "code": 11, "data_id": 0, "value1": 1.0, "value2": 0 },
+    { "code": 12, "data_id": 0, "value1": 1.0, "value2": 0 }
+  ]
+}
+```
+`code 11`=recover HP `code 12`=recover MP `code 13`=gain TP `code 21`=add state `code 22`=remove state `code 31`=add buff `code 32`=add debuff
 
 ---
 
@@ -525,6 +719,47 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
 
 ---
 
+### `edit-troop-events`
+
+**EN:** "Add a battle event to troop 2 that triggers once when turn 1 ends, showing a boss introduction message."
+**ES:** "Añade un evento de batalla a la tropa 2 que se dispare una vez cuando termine el turno 1, mostrando un mensaje de introducción del jefe."
+```json
+{
+  "troop_id": 2,
+  "mode": "replace_all",
+  "pages": [
+    {
+      "span": 0,
+      "conditions": { "turnValid": true, "turnA": 0, "turnB": 1 },
+      "commands": [
+        { "type": "message", "data": { "text": "You dare challenge me? Prepare to face true power!", "speaker": "Dragon Lord" } }
+      ]
+    }
+  ]
+}
+```
+**EN:** "Add a battle event page to troop 5 that activates each turn when the boss HP drops to 50% or below."
+**ES:** "Añade una página de evento de batalla a la tropa 5 que se active cada turno cuando el HP del jefe baje al 50% o menos."
+```json
+{
+  "troop_id": 5,
+  "mode": "append",
+  "pages": [
+    {
+      "span": 1,
+      "conditions": { "enemyValid": true, "enemyIndex": 0, "enemyHp": 50 },
+      "commands": [
+        { "type": "message", "data": { "text": "Now I get serious!", "speaker": "Boss" } },
+        { "type": "common-event", "data": { "id": 10 } }
+      ]
+    }
+  ]
+}
+```
+`span`: `0`=once per battle `1`=once per turn `2`=each moment
+
+---
+
 ## Common Events
 
 ### `create-common-event`
@@ -658,6 +893,51 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
 
 ---
 
+### `edit-event-page`
+
+**EN:** "Add a second page to event 3 on map 2 that activates when switch 5 is ON, showing a different NPC dialogue."
+**ES:** "Añade una segunda página al evento 3 del mapa 2 que se active cuando el switch 5 esté ON, mostrando un diálogo diferente del NPC."
+```json
+{
+  "map_id": 2,
+  "event_id": 3,
+  "mode": "add",
+  "page": {
+    "trigger": 0,
+    "conditions": { "switch1Valid": true, "switch1Id": 5 },
+    "commands": [
+      { "type": "message", "data": { "text": "The hero has returned! The kingdom is saved!", "speaker": "Villager" } }
+    ]
+  }
+}
+```
+**EN:** "Replace page 0 of event 7 on map 4 with a new autorun page that triggers a common event on load."
+**ES:** "Reemplaza la página 0 del evento 7 del mapa 4 con una nueva página de autorun que dispare un evento común al cargar."
+```json
+{
+  "map_id": 4,
+  "event_id": 7,
+  "mode": "replace",
+  "page_index": 0,
+  "page": {
+    "trigger": 3,
+    "priority_type": 0,
+    "commands": [
+      { "type": "common-event", "data": { "id": 5 } },
+      { "type": "switch", "data": { "id": 10, "value": true } }
+    ]
+  }
+}
+```
+**EN:** "Remove page 1 from event 5 on map 3 — we no longer need the conditional behaviour."
+**ES:** "Elimina la página 1 del evento 5 del mapa 3 — ya no necesitamos el comportamiento condicional."
+```json
+{ "map_id": 3, "event_id": 5, "mode": "remove", "page_index": 1 }
+```
+`trigger`: `0`=action button `1`=player touch `2`=event touch `3`=autorun `4`=parallel
+
+---
+
 ### `delete-map-event`
 
 **EN:** "Remove the old placeholder event (event 12) from map 5."
@@ -741,6 +1021,91 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
 
 ---
 
+## Map Tile Painting
+
+### `read-map-tiles`
+
+**EN:** "Read the tile data for the top-left 10×10 region of map 3."
+**ES:** "Lee los datos de tiles de la región de 10×10 en la esquina superior izquierda del mapa 3."
+```json
+{ "map_id": 3, "x": 0, "y": 0, "width": 10, "height": 10 }
+```
+**EN:** "Read only the region layer (layer 5) of the entire map 2 to see terrain tag assignments."
+**ES:** "Lee solo la capa de región (capa 5) del mapa 2 completo para ver las asignaciones de tags de terreno."
+```json
+{ "map_id": 2, "layers": [5] }
+```
+**EN:** "Get all tile data from map 5 including every layer."
+**ES:** "Obtén todos los datos de tiles del mapa 5 incluyendo todas las capas."
+```json
+{ "map_id": 5 }
+```
+
+---
+
+### `paint-map-tiles`
+
+**EN:** "Paint individual tiles on map 3: place wall tile 2624 at (5,3) on layer 0, and a door at (5,4) on layer 1."
+**ES:** "Pinta tiles individuales en el mapa 3: coloca el tile de pared 2624 en (5,3) en la capa 0, y una puerta en (5,4) en la capa 1."
+```json
+{
+  "map_id": 3,
+  "tiles": [
+    { "x": 5, "y": 3, "layer": 0, "tile_id": 2624 },
+    { "x": 5, "y": 4, "layer": 1, "tile_id": 2720 }
+  ]
+}
+```
+**EN:** "Assign region ID 5 to the tile at position (10, 8) on map 2."
+**ES:** "Asigna el ID de región 5 al tile en la posición (10, 8) del mapa 2."
+```json
+{
+  "map_id": 2,
+  "tiles": [{ "x": 10, "y": 8, "layer": 5, "tile_id": 5 }]
+}
+```
+`layer`: `0-3`=tile layers `4`=shadow `5`=region
+
+---
+
+### `fill-map-region`
+
+**EN:** "Fill a 5×5 area starting at (0, 0) on map 4 with floor tile 2816 on layer 0."
+**ES:** "Rellena un área de 5×5 empezando en (0, 0) del mapa 4 con el tile de suelo 2816 en la capa 0."
+```json
+{ "map_id": 4, "x": 0, "y": 0, "width": 5, "height": 5, "layer": 0, "tile_id": 2816 }
+```
+**EN:** "Clear the shadow layer in a 3×3 block at position (4, 2) on map 1."
+**ES:** "Limpia la capa de sombra en un bloque 3×3 en la posición (4, 2) del mapa 1."
+```json
+{ "map_id": 1, "x": 4, "y": 2, "width": 3, "height": 3, "layer": 4, "tile_id": 0 }
+```
+
+---
+
+### `paint-map-region`
+
+**EN:** "Paint a 10×5 rectangular area on map 2 with tile 2624 on layer 0 (solid fill)."
+**ES:** "Pinta un área rectangular de 10×5 en el mapa 2 con el tile 2624 en la capa 0 (relleno sólido)."
+```json
+{ "map_id": 2, "layer": 0, "x": 5, "y": 3, "width": 10, "height": 5, "tile_id": 2624 }
+```
+**EN:** "Paint a custom tile pattern on map 3 using a flat row-major tile array for a 3×2 region."
+**ES:** "Pinta un patrón de tiles personalizado en el mapa 3 usando un array plano de tiles para una región de 3×2."
+```json
+{
+  "map_id": 3,
+  "layer": 0,
+  "x": 2,
+  "y": 4,
+  "width": 3,
+  "height": 2,
+  "tiles": [2816, 2816, 2624, 2624, 2816, 2816]
+}
+```
+
+---
+
 ## Vehicles
 
 ### `edit-vehicle`
@@ -782,6 +1147,67 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
 
 ## Tilesets
 
+### `read-tileset`
+
+**EN:** "Read the settings for tileset 2 to see its graphic files and flag configuration."
+**ES:** "Lee la configuración del tileset 2 para ver sus archivos gráficos y la configuración de flags."
+```json
+{ "tileset_id": 2 }
+```
+**EN:** "List all tilesets in the project with their names and IDs."
+**ES:** "Lista todos los tilesets del proyecto con sus nombres e IDs."
+```json
+{}
+```
+**EN:** "Read tileset 3 including its full flags array so I can inspect passability settings."
+**ES:** "Lee el tileset 3 incluyendo su array completo de flags para inspeccionar la configuración de paso."
+```json
+{ "tileset_id": 3, "include_flags": true }
+```
+
+---
+
+### `create-tileset`
+
+**EN:** "Create a new dungeon tileset called 'Underground Cave' using the Dungeon tileset graphics."
+**ES:** "Crea un nuevo tileset de mazmorra llamado 'Cueva Subterránea' usando los gráficos de tileset de Dungeon."
+```json
+{
+  "name": "Underground Cave",
+  "mode": 1,
+  "tilesetNames": ["TileA1", "TileA2", "TileA3", "TileA4", "TileA5", "Dungeon", "Dungeon", "", ""]
+}
+```
+**EN:** "Create a world map tileset called 'Overworld' with world mode and the World tileset graphics."
+**ES:** "Crea un tileset de mapa mundial llamado 'Mundo' con modo world y los gráficos del tileset World."
+```json
+{
+  "name": "Overworld",
+  "mode": 0,
+  "tilesetNames": ["TileA1", "TileA2", "TileA3", "TileA4", "TileA5", "World", "", "", ""]
+}
+```
+
+---
+
+### `edit-tileset-properties`
+
+**EN:** "Rename tileset 2 to 'Snow Fields' and switch it to world map mode."
+**ES:** "Renombra el tileset 2 a 'Campos de Nieve' y cámbialo a modo mapa mundial."
+```json
+{ "tileset_id": 2, "name": "Snow Fields", "mode": 0 }
+```
+**EN:** "Update tileset 3 to use a new set of graphic files for all 9 slots."
+**ES:** "Actualiza el tileset 3 para que use nuevos archivos gráficos en los 9 slots."
+```json
+{
+  "tileset_id": 3,
+  "tilesetNames": ["TileA1", "TileA2", "TileA3", "TileA4", "TileA5", "Inside_A", "Inside_B", "Inside_C", ""]
+}
+```
+
+---
+
 ### `edit-tileset`
 
 **EN:** "In tileset 1, make tile 48 passable and tile 50 impassable. Set tile 64 to terrain tag 3."
@@ -796,6 +1222,44 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
   ]
 }
 ```
+
+---
+
+## Animations
+
+### `read-animation`
+
+**EN:** "Read all animations in the project to see their names and IDs."
+**ES:** "Lee todas las animaciones del proyecto para ver sus nombres e IDs."
+```json
+{}
+```
+**EN:** "Read the full details of animation 65 to inspect its effect file and display settings."
+**ES:** "Lee los detalles completos de la animación 65 para inspeccionar su archivo de efecto y configuración de visualización."
+```json
+{ "animation_id": 65 }
+```
+
+---
+
+### `edit-animation`
+
+**EN:** "Update animation 10 to use the 'Fire_01' Effekseer effect and display it centered on the target."
+**ES:** "Actualiza la animación 10 para que use el efecto Effekseer 'Fire_01' y se muestre centrada en el objetivo."
+```json
+{ "animation_id": 10, "effect_name": "Fire_01", "display_type": 1 }
+```
+**EN:** "Rename animation 20 to 'Thunder Blast' and set its playback speed to 120%."
+**ES:** "Renombra la animación 20 a 'Rayo Explosivo' y pon su velocidad de reproducción al 120%."
+```json
+{ "animation_id": 20, "name": "Thunder Blast", "speed": 120 }
+```
+**EN:** "Offset animation 5 by 16 pixels up so it aligns correctly with the character's head."
+**ES:** "Desplaza la animación 5 16 píxeles hacia arriba para que se alinee correctamente con la cabeza del personaje."
+```json
+{ "animation_id": 5, "offset_x": 0, "offset_y": -16 }
+```
+`display_type`: `0`=on target head `1`=on target center `2`=full screen `-1`=front
 
 ---
 
@@ -867,6 +1331,27 @@ Types: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops`
 **ES:** "Elimina el viejo TestPlugin — ya no lo necesito."
 ```json
 { "action": "delete", "plugin_name": "TestPlugin" }
+```
+
+---
+
+### `edit-plugin-parameters`
+
+**EN:** "Update the YEP_BattleEngineCore plugin to enable the front-view battle system."
+**ES:** "Actualiza el plugin YEP_BattleEngineCore para activar el sistema de batalla en vista frontal."
+```json
+{
+  "plugin_name": "YEP_BattleEngineCore",
+  "parameters": { "Front View UI": "true" }
+}
+```
+**EN:** "Set the starting gold amount in the RMMZ_Core plugin parameters."
+**ES:** "Establece la cantidad de oro inicial en los parámetros del plugin RMMZ_Core."
+```json
+{
+  "plugin_name": "RMMZ_Core",
+  "parameters": { "Starting Gold": "500" }
+}
 ```
 
 ---
