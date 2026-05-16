@@ -407,12 +407,72 @@ export class RPGMakerValidator {
     return { valid: errors.length === 0, errors, warnings };
   }
 
+  static validateAnimation(animation: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!animation.name || typeof animation.name !== "string") {
+      errors.push("Animation must have a 'name' property");
+    }
+    if (animation.frames !== undefined && !Array.isArray(animation.frames)) {
+      errors.push("Animation 'frames' must be an array");
+    }
+    if (animation.timings !== undefined && !Array.isArray(animation.timings)) {
+      errors.push("Animation 'timings' must be an array");
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateTileset(tileset: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!tileset.name || typeof tileset.name !== "string") {
+      errors.push("Tileset must have a 'name' property");
+    }
+    if (tileset.tilesetNames !== undefined) {
+      if (!Array.isArray(tileset.tilesetNames)) {
+        errors.push("Tileset 'tilesetNames' must be an array");
+      } else if ((tileset.tilesetNames as unknown[]).length !== 9) {
+        warnings.push("Tileset 'tilesetNames' should have exactly 9 entries");
+      }
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateCommonEvent(event: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!event.name || typeof event.name !== "string") {
+      errors.push("CommonEvent must have a 'name' property");
+    }
+    if (event.trigger !== undefined) {
+      if (typeof event.trigger !== "number" || event.trigger < 0 || event.trigger > 3) {
+        errors.push("CommonEvent 'trigger' must be 0-3 (0=none, 1=auto-run, 2=parallel)");
+      }
+    }
+    if (event.list !== undefined && !Array.isArray(event.list)) {
+      errors.push("CommonEvent 'list' must be an array");
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static validateTroop(troop: Record<string, unknown>): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    if (!troop.name || typeof troop.name !== "string") {
+      errors.push("Troop must have a 'name' property");
+    }
+    if (troop.members !== undefined && !Array.isArray(troop.members)) {
+      errors.push("Troop 'members' must be an array");
+    }
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
   /**
    * Valida múltiples datos
    */
   static validateBatch(
     items: Record<string, unknown>[],
-    type: "actor" | "item" | "enemy" | "skill" | "weapon" | "armor" | "class" | "state"
+    type: "actor" | "item" | "enemy" | "skill" | "weapon" | "armor" | "class" | "state" | "animation" | "tileset" | "common-event" | "troop"
   ): ValidationResult {
     const allErrors: string[] = [];
     const allWarnings: string[] = [];
@@ -444,6 +504,18 @@ export class RPGMakerValidator {
           break;
         case "state":
           result = this.validateState(item);
+          break;
+        case "animation":
+          result = this.validateAnimation(item);
+          break;
+        case "tileset":
+          result = this.validateTileset(item);
+          break;
+        case "common-event":
+          result = this.validateCommonEvent(item);
+          break;
+        case "troop":
+          result = this.validateTroop(item);
           break;
         default:
           continue;

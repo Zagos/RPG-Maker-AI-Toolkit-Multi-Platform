@@ -69,6 +69,13 @@ import { handleDuplicateEntity } from "./duplicate-entity.js";
 import { handleExportProjectSummary } from "./project-summary.js";
 import { handleBatchCreateEntities } from "./batch-create-entities.js";
 import { handleBatchDeleteEntities } from "./batch-delete-entities.js";
+import { handleValidateProject } from "./validate-project.js";
+import { handleFindAndReplace } from "./find-and-replace.js";
+import { handleCopyMap } from "./copy-map.js";
+import { handleCleanupProject } from "./cleanup-project.js";
+import { handleControlTimerRuntime } from "./control-timer-runtime.js";
+import { handleGetBattleStateRuntime } from "./get-battle-state-runtime.js";
+import { handleReorderPlugin } from "./reorder-plugin.js";
 
 // All tool handlers except batch-edit (to avoid circular imports)
 export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
@@ -166,4 +173,11 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "export-project-summary": handleExportProjectSummary,
   "batch-create-entities": handleBatchCreateEntities,
   "batch-delete-entities": handleBatchDeleteEntities,
+  "validate-project": handleValidateProject,
+  "find-and-replace": handleFindAndReplace,
+  "copy-map": handleCopyMap,
+  "cleanup-project": handleCleanupProject,
+  "control-timer-runtime": handleControlTimerRuntime,
+  "get-battle-state-runtime": handleGetBattleStateRuntime,
+  "reorder-plugin": handleReorderPlugin,
 };

@@ -1313,6 +1313,143 @@ Archetypes: `warrior` `mage` `rogue` `healer` `paladin` `ranger`
 }
 ```
 
+**EN:** "Call the VisuMZ plugin command 'ForceAction' on actor 1 with skill 10."
+**ES:** "Llama al comando de plugin VisuMZ 'ForceAction' en el actor 1 con la habilidad 10."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "plugin-command", "data": { "plugin_name": "VisuMZ_1_BattleCore", "command_name": "ActorCommandForceAction", "args": { "ActorID": "1", "SkillID": "10" } } }
+  ]
+}
+```
+
+**EN:** "Save the current BGM, play a victory jingle, then resume the saved BGM."
+**ES:** "Guarda el BGM actual, reproduce un jingle de victoria y luego reanuda el BGM guardado."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "save-bgm" },
+    { "type": "play-me", "data": { "name": "Victory1", "volume": 90, "pitch": 100 } },
+    { "type": "resume-bgm" }
+  ]
+}
+```
+
+**EN:** "Permanently increase Actor 1's ATK by 10 points."
+**ES:** "Aumenta permanentemente el ATK del Actor 1 en 10 puntos."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "change-parameter", "data": { "actor_id": 1, "parameter_id": 2, "operation": "add", "amount": 10 } }
+  ]
+}
+```
+
+**EN:** "Change Actor 2's display name to 'The Fallen' and nickname to 'Dark Knight'."
+**ES:** "Cambia el nombre visible del Actor 2 a 'The Fallen' y el subtítulo a 'Dark Knight'."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "change-name", "data": { "actor_id": 2, "name": "The Fallen" } },
+    { "type": "change-nickname", "data": { "actor_id": 2, "nickname": "Dark Knight" } }
+  ]
+}
+```
+
+**EN:** "Pan the camera right 5 tiles slowly for a cinematic reveal."
+**ES:** "Desplaza la cámara 5 tiles a la derecha lentamente para un efecto cinematográfico."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "scroll-map", "data": { "direction": 6, "distance": 5, "speed": 3, "wait": true } }
+  ]
+}
+```
+
+**EN:** "Start a 30-second timer for a timed puzzle (1800 frames = 30 seconds)."
+**ES:** "Inicia un temporizador de 30 segundos para un puzle cronometrado."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "control-timer", "data": { "operation": "start", "frames": 1800 } }
+  ]
+}
+```
+
+**EN:** "If the player loses the mini-game, trigger game over."
+**ES:** "Si el jugador pierde el minijuego, activa la pantalla de Game Over."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "game-over" }
+  ]
+}
+```
+
+**EN:** "Force open the save screen after a story checkpoint."
+**ES:** "Fuerza la apertura de la pantalla de guardado después de un punto de control narrativo."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "show-scrolling-text", "data": { "text": "Progress saved automatically.", "speed": 2 } },
+    { "type": "open-save" }
+  ]
+}
+```
+
+**EN:** "Hide the map name display and erase this trigger event after it fires."
+**ES:** "Oculta el nombre del mapa y borra este evento disparador después de activarse."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "change-map-name-display", "data": { "show": false } },
+    { "type": "erase-event" }
+  ]
+}
+```
+
+**EN:** "Switch the dungeon map to the underground tileset (ID 3) for the flooded section."
+**ES:** "Cambia el mapa del calabozo al tileset subterráneo (ID 3) para la sección inundada."
+
+```json
+{
+  "map_id": 3,
+  "event_id": 5,
+  "append_commands": [
+    { "type": "change-tileset", "data": { "tileset_id": 3 } }
+  ]
+}
+```
+
+Command types reference: `plugin-command` `save-bgm` `resume-bgm` `stop-se` `change-parameter` `change-name` `change-nickname` `scroll-map` `control-timer` `game-over` `return-to-title` `open-menu` `open-save` `erase-event` `change-map-name-display` `change-tileset`
+
 ---
 
 ### `edit-event-page`
@@ -1863,6 +2000,78 @@ Types: `Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `
 
 ---
 
+### `validate-project`
+
+**EN:** "Check the entire project for data errors — find any actors, enemies, or items with invalid data."
+**ES:** "Comprueba errores en todo el proyecto: busca actores, enemigos o ítems con datos inválidos."
+
+```json
+{ "include_warnings": true }
+```
+
+**EN:** "Validate only actors and classes in the project."
+**ES:** "Valida solo los actores y clases del proyecto."
+
+```json
+{ "entity_types": ["Actor", "Class"] }
+```
+
+---
+
+### `find-and-replace`
+
+**EN:** "Rename 'Hero' to 'Zara' everywhere in the project — all actor names, notes, and dialogue."
+**ES:** "Renombra 'Hero' a 'Zara' en todo el proyecto: nombres de actores, notas y diálogos."
+
+```json
+{ "find": "Hero", "replace": "Zara", "targets": ["names", "notes", "event_commands"], "confirm": true }
+```
+
+**EN:** "Fix the typo 'Potiom' → 'Potion' in all item names."
+**ES:** "Corrige el error tipográfico 'Potiom' → 'Potion' en todos los nombres de ítem."
+
+```json
+{ "find": "Potiom", "replace": "Potion", "targets": ["names"], "confirm": true }
+```
+
+---
+
+### `copy-map`
+
+**EN:** "Make a copy of Map 3 (the town) and call it 'Old Town' as a variant."
+**ES:** "Haz una copia del Mapa 3 (el pueblo) y llámala 'Old Town' como variante."
+
+```json
+{ "source_map_id": 3, "new_name": "Old Town" }
+```
+
+**EN:** "Duplicate Map 1 as a template for cave levels, name it 'Cave Template'."
+**ES:** "Duplica el Mapa 1 como plantilla para niveles de cueva, llámalo 'Cave Template'."
+
+```json
+{ "source_map_id": 1, "new_name": "Cave Template", "parent_id": 0 }
+```
+
+---
+
+### `cleanup-project`
+
+**EN:** "Show me how many deleted (null) slots exist in each entity file."
+**ES:** "Muéstrame cuántas ranuras eliminadas (nulas) hay en cada archivo de entidades."
+
+```json
+{}
+```
+
+**EN:** "Check only actors and skills for empty slots."
+**ES:** "Comprueba solo actores y habilidades para ver si hay ranuras vacías."
+
+```json
+{ "entity_types": ["Actor", "Skill"] }
+```
+
+---
+
 ## Plugins
 
 ### `create-plugin`
@@ -1965,6 +2174,24 @@ Types: `Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `
   "plugin_name": "RMMZ_Core",
   "parameters": { "Starting Gold": "500" }
 }
+```
+
+---
+
+### `reorder-plugin`
+
+**EN:** "Move the VisuMZ_CoreEngine plugin to load first so it initializes before everything else."
+**ES:** "Mueve el plugin VisuMZ_CoreEngine para que cargue primero y se inicialice antes que todo."
+
+```json
+{ "plugin_name": "VisuMZ_CoreEngine", "position": "first" }
+```
+
+**EN:** "Load my CustomBattleSystem plugin right before VisuMZ_BattleCore."
+**ES:** "Carga mi plugin CustomBattleSystem justo antes de VisuMZ_BattleCore."
+
+```json
+{ "plugin_name": "CustomBattleSystem", "position": "before", "relative_plugin": "VisuMZ_BattleCore" }
 ```
 
 ---
@@ -2379,6 +2606,42 @@ Types: `Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `
 
 **EN:** "Read the current map info: dimensions, player position, and active weather."
 **ES:** "Lee la información del mapa actual: dimensiones, posición del jugador y clima activo."
+
+```json
+{}
+```
+
+---
+
+### `control-timer-runtime`
+
+**EN:** "Start a 60-second countdown timer in the running game."
+**ES:** "Inicia un temporizador de cuenta regresiva de 60 segundos en el juego en ejecución."
+
+```json
+{ "action": "start", "frames": 3600 }
+```
+
+**EN:** "Check if the game timer is running and how many seconds are left."
+**ES:** "Comprueba si el temporizador del juego está activo y cuántos segundos quedan."
+
+```json
+{ "action": "get" }
+```
+
+**EN:** "Stop the countdown timer immediately."
+**ES:** "Detén el temporizador de cuenta regresiva inmediatamente."
+
+```json
+{ "action": "stop" }
+```
+
+---
+
+### `get-battle-state-runtime`
+
+**EN:** "Read the current battle state — which enemies are alive and what HP does each party member have?"
+**ES:** "Lee el estado actual de la batalla: ¿qué enemigos están vivos y cuántos PV tiene cada miembro del grupo?"
 
 ```json
 {}

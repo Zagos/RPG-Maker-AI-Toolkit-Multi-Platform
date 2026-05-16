@@ -13,6 +13,8 @@ const FILE_MAP: Record<string, string> = {
   State: "States.json",
   Troop: "Troops.json",
   CommonEvent: "CommonEvents.json",
+  Animation: "Animations.json",
+  Tileset: "Tilesets.json",
 };
 
 export async function handleDeleteEntity(ctx: HandlerContext): Promise<string> {

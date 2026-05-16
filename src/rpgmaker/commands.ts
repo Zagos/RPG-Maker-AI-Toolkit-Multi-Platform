@@ -53,7 +53,27 @@ export type MapEventCommandInput = {
     | "change-level"
     | "change-skill"
     | "change-equipment"
-    | "change-class";
+    | "change-class"
+    | "save-bgm"
+    | "resume-bgm"
+    | "fade-out-bgs"
+    | "stop-se"
+    | "change-parameter"
+    | "change-name"
+    | "change-nickname"
+    | "change-profile"
+    | "scroll-map"
+    | "change-map-name-display"
+    | "change-tileset"
+    | "change-battle-back"
+    | "control-timer"
+    | "change-transparency"
+    | "erase-event"
+    | "open-menu"
+    | "open-save"
+    | "game-over"
+    | "return-to-title"
+    | "plugin-command";
   data?: string | Record<string, unknown>;
 };
 
@@ -492,6 +512,106 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
       const class_id = Number(obj["class_id"] ?? 1);
       const keep_exp = Boolean(obj["keep_exp"] ?? false);
       return [{ code: 321, indent: 0, parameters: [actor_id, class_id, keep_exp] }];
+    }
+
+    case "save-bgm":
+      return [{ code: 243, indent: 0, parameters: [] }];
+
+    case "resume-bgm":
+      return [{ code: 244, indent: 0, parameters: [] }];
+
+    case "fade-out-bgs": {
+      const duration = Number(obj["duration"] ?? 60);
+      return [{ code: 246, indent: 0, parameters: [duration] }];
+    }
+
+    case "stop-se":
+      return [{ code: 251, indent: 0, parameters: [] }];
+
+    case "change-parameter": {
+      const actor_id = Number(obj["actor_id"] ?? 0);
+      const parameter_id = Number(obj["parameter_id"] ?? 0);
+      const operation = String(obj["operation"] ?? "add") === "remove" ? 1 : 0;
+      const amount = Number(obj["amount"] ?? 0);
+      return [{ code: 317, indent: 0, parameters: [0, actor_id, parameter_id, 0, 0, operation, amount] }];
+    }
+
+    case "change-name": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const name = String(obj["name"] ?? "");
+      return [{ code: 320, indent: 0, parameters: [actor_id, name] }];
+    }
+
+    case "change-nickname": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const nickname = String(obj["nickname"] ?? "");
+      return [{ code: 324, indent: 0, parameters: [actor_id, nickname] }];
+    }
+
+    case "change-profile": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const profile = String(obj["profile"] ?? "");
+      return [{ code: 325, indent: 0, parameters: [actor_id, profile] }];
+    }
+
+    case "scroll-map": {
+      const direction = Number(obj["direction"] ?? 6);
+      const distance = Number(obj["distance"] ?? 3);
+      const speed = Number(obj["speed"] ?? 4);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 204, indent: 0, parameters: [direction, distance, speed, wait] }];
+    }
+
+    case "change-map-name-display": {
+      const show = Boolean(obj["show"] ?? true);
+      return [{ code: 281, indent: 0, parameters: [show ? 0 : 1] }];
+    }
+
+    case "change-tileset": {
+      const tileset_id = Number(obj["tileset_id"] ?? 1);
+      return [{ code: 282, indent: 0, parameters: [tileset_id] }];
+    }
+
+    case "change-battle-back": {
+      const back1 = String(obj["back1"] ?? "");
+      const back2 = String(obj["back2"] ?? "");
+      return [{ code: 283, indent: 0, parameters: [back1, back2] }];
+    }
+
+    case "control-timer": {
+      const operation = String(obj["operation"] ?? "start");
+      if (operation === "stop") {
+        return [{ code: 124, indent: 0, parameters: [1] }];
+      }
+      const frames = Number(obj["frames"] ?? 600);
+      return [{ code: 124, indent: 0, parameters: [0, frames] }];
+    }
+
+    case "change-transparency": {
+      const transparent = Boolean(obj["transparent"] ?? false);
+      return [{ code: 211, indent: 0, parameters: [transparent ? 0 : 1] }];
+    }
+
+    case "erase-event":
+      return [{ code: 214, indent: 0, parameters: [] }];
+
+    case "open-menu":
+      return [{ code: 351, indent: 0, parameters: [] }];
+
+    case "open-save":
+      return [{ code: 352, indent: 0, parameters: [] }];
+
+    case "game-over":
+      return [{ code: 353, indent: 0, parameters: [] }];
+
+    case "return-to-title":
+      return [{ code: 354, indent: 0, parameters: [] }];
+
+    case "plugin-command": {
+      const plugin_name = String(obj["plugin_name"] ?? "");
+      const command_name = String(obj["command_name"] ?? "");
+      const args = (obj["args"] ?? {}) as Record<string, string>;
+      return [{ code: 357, indent: 0, parameters: [plugin_name, command_name, args] }];
     }
 
     default:

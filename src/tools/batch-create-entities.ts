@@ -8,8 +8,8 @@ export const BatchCreateEntitiesTool: Tool = {
     properties: {
       entity_type: {
         type: "string",
-        description: "Type of entity to create. One of: Actor, Item, Weapon, Armor, Skill, Class, State, Enemy",
-        enum: ["Actor", "Item", "Weapon", "Armor", "Skill", "Class", "State", "Enemy"],
+        description: "Type of entity to create. One of: Actor, Item, Weapon, Armor, Skill, Class, State, Enemy, Troop, CommonEvent, Animation",
+        enum: ["Actor", "Item", "Weapon", "Armor", "Skill", "Class", "State", "Enemy", "Troop", "CommonEvent", "Animation"],
       },
       entities: {
         type: "array",

@@ -11,6 +11,8 @@ const ENTITY_TYPE_MAP: Record<string, (ctx: HandlerContext, id: number) => unkno
   State: (ctx, id) => ctx.reader.readState(id),
   Troop: (ctx, id) => ctx.reader.readTroop(id),
   CommonEvent: (ctx, id) => ctx.reader.readCommonEvent(id),
+  Animation: (ctx, id) => ctx.reader.readAnimation(id),
+  Tileset: (ctx, id) => ctx.reader.readTileset(id),
 };
 
 export async function handleReadEntity(ctx: HandlerContext): Promise<string> {

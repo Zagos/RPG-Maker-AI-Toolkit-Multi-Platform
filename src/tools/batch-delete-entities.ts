@@ -8,8 +8,8 @@ export const BatchDeleteEntitiesTool: Tool = {
     properties: {
       entity_type: {
         type: "string",
-        description: "Type of entity to delete. One of: Actor, Item, Enemy, Weapon, Armor, Skill, Class, State, Troop, CommonEvent, Animation",
-        enum: ["Actor", "Item", "Enemy", "Weapon", "Armor", "Skill", "Class", "State", "Troop", "CommonEvent", "Animation"],
+        description: "Type of entity to delete. One of: Actor, Item, Enemy, Weapon, Armor, Skill, Class, State, Troop, CommonEvent, Animation, Tileset",
+        enum: ["Actor", "Item", "Enemy", "Weapon", "Armor", "Skill", "Class", "State", "Troop", "CommonEvent", "Animation", "Tileset"],
       },
       entity_ids: {
         type: "array",
