@@ -388,10 +388,6 @@ const RUBY_UNSUPPORTED_TOOLS = new Set<string>([
   // plugins
   "create-plugin", "create-plugin-advanced", "manage-plugins",
   "edit-plugin-parameters", "reorder-plugin",
-  // mz event command format
-  "create-map-event", "edit-map-event", "edit-event-page",
-  "add-dialogue", "create-dialogue-advanced", "import-dialogue",
-  "export-dialogue", "story-generator", "edit-troop-events",
   // mz-specific data structures
   "edit-system", "read-system-extended", "validate-project",
 ]);
@@ -401,6 +397,14 @@ const RUBY_ENGINE_NAMES: Record<string, string> = {
   vx: "VX",
   xp: "XP",
 };
+
+// Event command tools work on Ruby engines (codes are identical to MZ/MV for core commands),
+// but some parameters differ in edge cases. Append a warning to successful responses.
+const RUBY_EVENT_CMD_TOOLS = new Set<string>([
+  "create-map-event", "edit-map-event", "edit-event-page",
+  "add-dialogue", "create-dialogue-advanced", "import-dialogue",
+  "export-dialogue", "story-generator", "edit-troop-events",
+]);
 
 const debugBridge = new RPGMakerDebugBridge();
 // changeLog is a singleton so all tool calls share the same log file
@@ -454,7 +458,18 @@ async function handleToolCall(toolName: string, toolInput: Record<string, unknow
   };
 
   try {
-    return await handler(ctx);
+    let result = await handler(ctx);
+    if (RPGMAKER_ENGINE in RUBY_ENGINE_NAMES && RUBY_EVENT_CMD_TOOLS.has(toolName)) {
+      try {
+        const parsed = JSON.parse(result) as Record<string, unknown>;
+        if (!parsed.error) {
+          const engineLabel = RUBY_ENGINE_NAMES[RPGMAKER_ENGINE];
+          parsed._engine_note = `Event command codes are compatible with RPG Maker ${engineLabel}. Note: show-picture has fewer parameters than MZ; animation IDs reference the classic frame-based format, not Effekseer.`;
+          result = JSON.stringify(parsed);
+        }
+      } catch { /* leave result unchanged if not valid JSON */ }
+    }
+    return result;
   } catch (error) {
     logger.error("Tool execution error", error);
     return JSON.stringify({ error: (error as Error).message });
