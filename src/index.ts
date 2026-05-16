@@ -137,6 +137,9 @@ function loadEnvFile(): void {
 loadEnvFile();
 
 const RPGMAKER_PROJECT_PATH = process.env.RPGMAKER_PROJECT_PATH;
+const RPGMAKER_ENGINE = (process.env.RPGMAKER_ENGINE || "mz").toLowerCase();
+const SUPPORTED_ENGINES = ["mz"] as const;
+type SupportedEngine = typeof SUPPORTED_ENGINES[number];
 const DEBUG = process.env.MCP_DEBUG === "true";
 const LOG_LEVEL = process.env.LOG_LEVEL || "info";
 const BRIDGE_PORT = 9001;
@@ -162,12 +165,16 @@ function validateSetup(): boolean {
     logger.error(`RPG Maker project path does not exist: ${RPGMAKER_PROJECT_PATH}`);
     return false;
   }
-  const dataPath = path.join(RPGMAKER_PROJECT_PATH, "data");
-  if (!fs.existsSync(dataPath)) {
-    logger.error(`RPG Maker data directory not found at: ${dataPath}. Is this a valid RPG Maker MZ project?`);
+  if (!SUPPORTED_ENGINES.includes(RPGMAKER_ENGINE as SupportedEngine)) {
+    logger.error(`RPGMAKER_ENGINE="${RPGMAKER_ENGINE}" is not yet supported. Supported: ${SUPPORTED_ENGINES.join(", ")}`);
     return false;
   }
-  logger.info(`✓ RPG Maker project found at: ${RPGMAKER_PROJECT_PATH}`);
+  const dataPath = path.join(RPGMAKER_PROJECT_PATH, "data");
+  if (!fs.existsSync(dataPath)) {
+    logger.error(`RPG Maker data directory not found at: ${dataPath}. Is this a valid RPG Maker ${RPGMAKER_ENGINE.toUpperCase()} project?`);
+    return false;
+  }
+  logger.info(`✓ RPG Maker ${RPGMAKER_ENGINE.toUpperCase()} project found at: ${RPGMAKER_PROJECT_PATH}`);
   return true;
 }
 
