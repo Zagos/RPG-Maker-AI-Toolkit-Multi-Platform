@@ -10,6 +10,9 @@ const WRITER_MAP: Record<string, (writer: RPGMakerWriter, data: Record<string, u
   Class: (w, d) => w.addClass(d),
   State: (w, d) => w.addState(d),
   Enemy: (w, d) => w.addEnemy(d),
+  Troop: (w, d) => w.addTroop(d),
+  CommonEvent: (w, d) => w.addCommonEvent(d),
+  Animation: (w, d) => w.addAnimation(d),
 };
 
 export async function handleBatchCreateEntities(ctx: HandlerContext): Promise<string> {

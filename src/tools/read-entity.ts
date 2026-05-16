@@ -9,8 +9,8 @@ export const ReadEntityTool: Tool = {
     properties: {
       entity_type: {
         type: "string",
-        enum: ["Actor", "Item", "Enemy", "Weapon", "Armor", "Skill", "Class", "State", "Troop", "CommonEvent"],
-        description: "Type of entity to read",
+        enum: ["Actor", "Item", "Enemy", "Weapon", "Armor", "Skill", "Class", "State", "Troop", "CommonEvent", "Animation", "Tileset"],
+        description: "Type of entity to read. Supported: Actor, Item, Enemy, Weapon, Armor, Skill, Class, State, Troop, CommonEvent, Animation, Tileset",
       },
       entity_id: {
         type: "integer",

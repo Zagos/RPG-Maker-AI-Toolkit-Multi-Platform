@@ -230,6 +230,16 @@ export class RPGMakerReader {
     return this.readTilesets().find((t) => t.id === id) ?? null;
   }
 
+  readAnimations(): unknown[] {
+    const data = this.readJsonFile("Animations.json") as unknown[];
+    return data.filter((a) => a !== null);
+  }
+
+  readAnimation(id: number): unknown {
+    const anims = this.readAnimations();
+    return anims.find((a) => a !== null && typeof a === "object" && (a as Record<string, unknown>).id === id) || null;
+  }
+
   /**
    * Lee un mapa específico por ID
    */

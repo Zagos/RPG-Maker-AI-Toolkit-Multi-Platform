@@ -483,6 +483,22 @@ export class RPGMakerWriter {
     return newId;
   }
 
+  addAnimation(animationData: Record<string, unknown>): number {
+    const animations = this.readDatabaseArray("Animations.json");
+    const newId = this.getNextId(animations);
+    animations.push({ ...animationData, id: newId });
+    this.writeJsonFile("Animations.json", animations);
+    return newId;
+  }
+
+  addTileset(tilesetData: Record<string, unknown>): number {
+    const tilesets = this.readDatabaseArray("Tilesets.json");
+    const newId = this.getNextId(tilesets);
+    tilesets.push({ ...tilesetData, id: newId });
+    this.writeJsonFile("Tilesets.json", tilesets);
+    return newId;
+  }
+
   /**
    * Obtiene la lista de archivos de backup
    */
