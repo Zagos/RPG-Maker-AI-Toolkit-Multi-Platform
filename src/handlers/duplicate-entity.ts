@@ -14,6 +14,7 @@ const FILE_MAP: Record<string, string> = {
   Troop: "Troops.json",
   CommonEvent: "CommonEvents.json",
   Animation: "Animations.json",
+  Tileset: "Tilesets.json",
 };
 
 export async function handleDuplicateEntity(ctx: HandlerContext): Promise<string> {

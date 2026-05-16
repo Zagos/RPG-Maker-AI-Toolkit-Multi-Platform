@@ -6,7 +6,7 @@ export const DuplicateEntityTool = {
     properties: {
       entity_type: {
         type: "string",
-        enum: ["Actor", "Item", "Skill", "Weapon", "Armor", "Class", "State", "Enemy", "Troop", "CommonEvent", "Animation"],
+        enum: ["Actor", "Item", "Skill", "Weapon", "Armor", "Class", "State", "Enemy", "Troop", "CommonEvent", "Animation", "Tileset"],
         description: "The type of entity to duplicate",
       },
       entity_id: {

@@ -52,7 +52,6 @@ export async function handleEditAnimation(ctx: HandlerContext): Promise<string> 
     const idx = animations.findIndex((a) => a !== null && (a as Record<string, unknown>).id === animationId);
     if (idx === -1) return JSON.stringify({ error: `Animation ${animationId} not found` });
 
-    const existing = animations[idx] as Record<string, unknown>;
     const updates: Record<string, unknown> = {};
     const changes: string[] = [];
 
@@ -67,8 +66,7 @@ export async function handleEditAnimation(ctx: HandlerContext): Promise<string> 
       return JSON.stringify({ error: "No fields to update. Provide at least one of: name, effect_name, display_type, offset_x, offset_y, speed" });
     }
 
-    animations[idx] = { ...existing, ...updates };
-    writer.writeDataFile("Animations.json", animations);
+    writer.updateAnimation(animationId, updates);
 
     changeLog.append({
       tool: "edit-animation",

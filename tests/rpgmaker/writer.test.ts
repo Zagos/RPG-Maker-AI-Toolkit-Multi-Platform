@@ -250,3 +250,52 @@ describe("RPGMakerWriter — refreshVersionId", () => {
     expect(typeof system.versionId).toBe("number");
   });
 });
+
+describe("Animation and Tileset methods", () => {
+  const MINIMAL_ANIMATION = {
+    id: 1, name: "Test", frames: [], timings: [], displayType: 0,
+    flashTimings: [], soundTimings: [], rotation: 0, offsetX: 0, offsetY: 0,
+    speed: 100, scale: 100,
+  };
+
+  const MINIMAL_TILESET = {
+    id: 1, name: "Test", mode: 1, tilesetNames: [], flags: [], note: "",
+  };
+
+  it("addAnimation creates an entry with the correct id and name", () => {
+    writeJson(path.join(tmpDir, "data", "Animations.json"), [null]);
+    const newId = writer.addAnimation({ name: "Fireball" });
+    expect(newId).toBe(1);
+    const anims = readJson(path.join(tmpDir, "data", "Animations.json")) as Array<{ id: number; name: string } | null>;
+    expect(anims[1]?.id).toBe(1);
+    expect(anims[1]?.name).toBe("Fireball");
+  });
+
+  it("addTileset creates an entry with the correct id and name", () => {
+    writeJson(path.join(tmpDir, "data", "Tilesets.json"), [null]);
+    const newId = writer.addTileset({ name: "WorldMap" });
+    expect(newId).toBe(1);
+    const tilesets = readJson(path.join(tmpDir, "data", "Tilesets.json")) as Array<{ id: number; name: string } | null>;
+    expect(tilesets[1]?.id).toBe(1);
+    expect(tilesets[1]?.name).toBe("WorldMap");
+  });
+
+  it("updateAnimation changes the name of an existing entry", () => {
+    writeJson(path.join(tmpDir, "data", "Animations.json"), [null, { ...MINIMAL_ANIMATION }]);
+    writer.updateAnimation(1, { name: "Updated" });
+    const anims = readJson(path.join(tmpDir, "data", "Animations.json")) as Array<{ id: number; name: string } | null>;
+    expect(anims[1]?.name).toBe("Updated");
+  });
+
+  it("updateTileset changes the name of an existing entry", () => {
+    writeJson(path.join(tmpDir, "data", "Tilesets.json"), [null, { ...MINIMAL_TILESET }]);
+    writer.updateTileset(1, { name: "Updated" });
+    const tilesets = readJson(path.join(tmpDir, "data", "Tilesets.json")) as Array<{ id: number; name: string } | null>;
+    expect(tilesets[1]?.name).toBe("Updated");
+  });
+
+  it("updateAnimation throws when id does not exist", () => {
+    writeJson(path.join(tmpDir, "data", "Animations.json"), [null, { ...MINIMAL_ANIMATION }]);
+    expect(() => writer.updateAnimation(99, { name: "Ghost" })).toThrow(/not found/i);
+  });
+});
