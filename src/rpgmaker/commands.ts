@@ -73,7 +73,13 @@ export type MapEventCommandInput = {
     | "open-save"
     | "game-over"
     | "return-to-title"
-    | "plugin-command";
+    | "plugin-command"
+    | "show-balloon"
+    | "set-event-location"
+    | "move-picture"
+    | "rotate-picture"
+    | "change-actor-images"
+    | "toggle-party-member";
   data?: string | Record<string, unknown>;
 };
 
@@ -612,6 +618,58 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
       const command_name = String(obj["command_name"] ?? "");
       const args = (obj["args"] ?? {}) as Record<string, string>;
       return [{ code: 357, indent: 0, parameters: [plugin_name, command_name, args] }];
+    }
+
+    case "show-balloon": {
+      const character_id = Number(obj["character_id"] ?? -1);
+      const balloon_id = Number(obj["balloon_id"] ?? 1);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 213, indent: 0, parameters: [character_id, balloon_id, wait] }];
+    }
+
+    case "set-event-location": {
+      const event_id = Number(obj["event_id"] ?? 1);
+      const location_type = Number(obj["location_type"] ?? 0);
+      const x = Number(obj["x"] ?? 0);
+      const y = Number(obj["y"] ?? 0);
+      const direction = Number(obj["direction"] ?? 0);
+      return [{ code: 203, indent: 0, parameters: [event_id, location_type, x, y, direction] }];
+    }
+
+    case "move-picture": {
+      const picture_id = Number(obj["picture_id"] ?? 1);
+      const origin = Number(obj["origin"] ?? 0);
+      const x = Number(obj["x"] ?? 0);
+      const y = Number(obj["y"] ?? 0);
+      const scale_x = Number(obj["scale_x"] ?? 100);
+      const scale_y = Number(obj["scale_y"] ?? 100);
+      const opacity = Number(obj["opacity"] ?? 255);
+      const blend_mode = Number(obj["blend_mode"] ?? 0);
+      const duration = Number(obj["duration"] ?? 60);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 232, indent: 0, parameters: [picture_id, origin, 0, x, y, scale_x, scale_y, opacity, blend_mode, duration, wait] }];
+    }
+
+    case "rotate-picture": {
+      const picture_id = Number(obj["picture_id"] ?? 1);
+      const speed = Number(obj["speed"] ?? 0);
+      return [{ code: 233, indent: 0, parameters: [picture_id, speed] }];
+    }
+
+    case "change-actor-images": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const face_name = String(obj["face_name"] ?? "");
+      const face_index = Number(obj["face_index"] ?? 0);
+      const character_name = String(obj["character_name"] ?? "");
+      const character_index = Number(obj["character_index"] ?? 0);
+      const battler_name = String(obj["battler_name"] ?? "");
+      return [{ code: 322, indent: 0, parameters: [actor_id, face_name, face_index, character_name, character_index, battler_name] }];
+    }
+
+    case "toggle-party-member": {
+      const actor_id = Number(obj["actor_id"] ?? 1);
+      const enable = Boolean(obj["enable"] ?? true);
+      return [{ code: 340, indent: 0, parameters: [actor_id, enable ? 0 : 1] }];
     }
 
     default:

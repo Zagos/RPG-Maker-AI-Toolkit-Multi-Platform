@@ -8,8 +8,8 @@ export const ValidateProjectTool: Tool = {
     properties: {
       entity_types: {
         type: "array",
-        description: "Entity types to validate (default: all). Options: Actor, Item, Weapon, Armor, Skill, Class, State, Enemy",
-        items: { type: "string", enum: ["Actor", "Item", "Weapon", "Armor", "Skill", "Class", "State", "Enemy"] },
+        description: "Entity types to validate (default: all). Options: Actor, Item, Weapon, Armor, Skill, Class, State, Enemy, Troop, CommonEvent",
+        items: { type: "string", enum: ["Actor", "Item", "Weapon", "Armor", "Skill", "Class", "State", "Enemy", "Troop", "CommonEvent"] },
       },
       include_warnings: {
         type: "boolean",

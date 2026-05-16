@@ -14,6 +14,8 @@ const ENTITY_FILES: Record<string, { file: string; validator: ValidatorFn }> = {
   Class: { file: "Classes.json", validator: (e) => RPGMakerValidator.validateClass(e) },
   State: { file: "States.json", validator: (e) => RPGMakerValidator.validateState(e) },
   Enemy: { file: "Enemies.json", validator: (e) => RPGMakerValidator.validateEnemy(e) },
+  Troop: { file: "Troops.json", validator: (e) => RPGMakerValidator.validateTroop(e) },
+  CommonEvent: { file: "CommonEvents.json", validator: (e) => RPGMakerValidator.validateCommonEvent(e) },
 };
 
 export async function handleValidateProject(ctx: HandlerContext): Promise<string> {
