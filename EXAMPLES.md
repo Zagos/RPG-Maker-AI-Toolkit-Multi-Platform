@@ -1448,7 +1448,42 @@ Archetypes: `warrior` `mage` `rogue` `healer` `paladin` `ranger`
 }
 ```
 
-Command types reference: `plugin-command` `save-bgm` `resume-bgm` `stop-se` `change-parameter` `change-name` `change-nickname` `scroll-map` `control-timer` `game-over` `return-to-title` `open-menu` `open-save` `erase-event` `change-map-name-display` `change-tileset`
+Command types reference: `plugin-command` `save-bgm` `resume-bgm` `stop-se` `change-parameter` `change-name` `change-nickname` `scroll-map` `control-timer` `game-over` `return-to-title` `open-menu` `open-save` `erase-event` `change-map-name-display` `change-tileset` `show-balloon` `set-event-location` `move-picture` `rotate-picture` `change-actor-images` `toggle-party-member`
+
+**EN:** "Show an exclamation mark above the player when they discover something."
+**ES:** "Muestra un signo de exclamación sobre el jugador cuando descubre algo."
+
+```json
+{ "commands": [{ "type": "show-balloon", "data": { "character_id": -1, "balloon_id": 1, "wait": true } }] }
+```
+
+**EN:** "Teleport event 5 to tile (8, 3) when the puzzle is solved."
+**ES:** "Teleporta el evento 5 al tile (8, 3) cuando el puzle esté resuelto."
+
+```json
+{ "commands": [{ "type": "set-event-location", "data": { "event_id": 5, "location_type": 0, "x": 8, "y": 3, "direction": 0 } }] }
+```
+
+**EN:** "Slide picture 1 to the right (x=400) over 2 seconds (120 frames)."
+**ES:** "Desliza la imagen 1 hacia la derecha (x=400) en 2 segundos (120 frames)."
+
+```json
+{ "commands": [{ "type": "move-picture", "data": { "picture_id": 1, "x": 400, "y": 300, "duration": 120, "wait": true } }] }
+```
+
+**EN:** "Change Hero's sprite to the armored version after equipping the heavy armor."
+**ES:** "Cambia el sprite del héroe a la versión con armadura después de equipar la armadura pesada."
+
+```json
+{ "commands": [{ "type": "change-actor-images", "data": { "actor_id": 1, "character_name": "Actor1_Armored", "character_index": 0, "face_name": "Actor1_Armored", "face_index": 0, "battler_name": "Actor1_SV_Armored" } }] }
+```
+
+**EN:** "Disable Actor 3 from battle participation during the story segment where they are injured."
+**ES:** "Desactiva al Actor 3 de la participación en batalla durante el segmento de historia donde está herido."
+
+```json
+{ "commands": [{ "type": "toggle-party-member", "data": { "actor_id": 3, "enable": false } }] }
+```
 
 ---
 
@@ -2068,6 +2103,40 @@ Types: `Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `
 
 ```json
 { "entity_types": ["Actor", "Skill"] }
+```
+
+---
+
+### `export-dialogue`
+
+**EN:** "Export all dialogue from the entire project to review the script."
+**ES:** "Exporta todos los diálogos del proyecto para revisar el guión."
+
+```json
+{}
+```
+
+**EN:** "Get only the dialogue from maps 1, 2, and 3 for the first chapter."
+**ES:** "Obtén solo los diálogos de los mapas 1, 2 y 3 para el primer capítulo."
+
+```json
+{ "map_ids": [1, 2, 3], "include_common_events": false }
+```
+
+---
+
+### `import-dialogue`
+
+**EN:** "Import translated dialogue back into the project after translating to Spanish."
+**ES:** "Importa los diálogos traducidos de vuelta al proyecto tras traducirlos al español."
+
+```json
+{
+  "entries": [
+    { "source_type": "common_event", "source_id": 1, "event_id": 0, "page": 0, "command_index": 0, "lines": ["¡Hola, viajero!", "Bienvenido al pueblo."] }
+  ],
+  "confirm": true
+}
 ```
 
 ---
@@ -2772,6 +2841,24 @@ Types: `Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `
 
 ```json
 { "entity_type": "CommonEvent", "entity_ids": [5, 6, 7, 8], "confirm": true }
+```
+
+---
+
+### `batch-update-entities`
+
+**EN:** "Increase the HP of all three cave bosses (enemies 5, 6, 7) to 800 HP at once."
+**ES:** "Aumenta los PV de los tres jefes de la cueva (enemigos 5, 6, 7) a 800 de golpe."
+
+```json
+{ "entity_type": "Enemy", "entity_ids": [5, 6, 7], "updates": { "params": [800] }, "confirm": true }
+```
+
+**EN:** "Rename all placeholder actors (IDs 10-12) to start with '[DRAFT]'."
+**ES:** "Renombra todos los actores de marcador de posición (IDs 10-12) para que empiecen con '[DRAFT]'."
+
+```json
+{ "entity_type": "Actor", "entity_ids": [10, 11, 12], "updates": { "name": "[DRAFT] Character" }, "confirm": true }
 ```
 
 ---

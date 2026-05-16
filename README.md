@@ -446,6 +446,9 @@ All create tools return `{ success, <type>_id, name }`.
 | `find-and-replace` | `find` · `replace` · `targets?` · `confirm: true` |
 | `copy-map` | `source_map_id` · `new_name` · `parent_id?` |
 | `cleanup-project` | `entity_types?` |
+| `batch-update-entities` | `entity_type` · `entity_ids [array]` · `updates {object}` · `confirm: true` |
+| `export-dialogue` | `include_maps?` · `include_common_events?` · `map_ids?` |
+| `import-dialogue` | `entries [array]` · `confirm: true` |
 
 **`search-entity`** — Case-insensitive substring search across any entity type (Actor, Item, Weapon, Armor, Skill, Class, State, Enemy, Troop, CommonEvent, Animation, Tileset). Returns `{ matches: [{id, name}] }`.
 
@@ -462,6 +465,12 @@ All create tools return `{ success, <type>_id, name }`.
 **`copy-map`** — Duplicate an existing map (tiles + events) with a new name and the next available ID. Automatically adds the new entry to `MapInfos.json`. Returns `{ new_map_id, name, copied_from }`.
 
 **`cleanup-project`** — Read-only audit of null slots in entity JSON arrays. Reports `{ null_slots, active_entities, total_slots }` per entity type. Does NOT rewrite files or reassign IDs.
+
+**`batch-update-entities`** — Apply the same field updates to multiple entities of the same type in one call. Useful for bulk balancing: set HP on 10 enemies, rename a group of items, etc. Returns `{ results: [{id, success}] }`. Requires `confirm: true`.
+
+**`export-dialogue`** — Extract all dialogue text from map events and common events into a structured JSON. Each entry contains `source_type`, `source_id`, `event_id`, `page`, `command_index`, `speaker`, and `lines[]`. Primary use case: prepare text for translation.
+
+**`import-dialogue`** — Write translated/modified dialogue back into the project. Matches entries by `source_id`, `event_id`, `page`, and `command_index` from `export-dialogue`. Line count per entry must match the original. Requires `confirm: true`.
 
 ---
 
@@ -907,6 +916,9 @@ Fórmula de índice: `x + y × anchura + capa × anchura × altura`. Capas: 0–
 | `find-and-replace` | `find` · `replace` · `targets?` · `confirm: true` |
 | `copy-map` | `source_map_id` · `new_name` · `parent_id?` |
 | `cleanup-project` | `entity_types?` |
+| `batch-update-entities` | `entity_type` · `entity_ids [array]` · `updates {object}` · `confirm: true` |
+| `export-dialogue` | `include_maps?` · `include_common_events?` · `map_ids?` |
+| `import-dialogue` | `entries [array]` · `confirm: true` |
 
 **`search-entity`** — Búsqueda de subcadena sin distinción de mayúsculas en cualquier tipo de entidad. Devuelve `{ matches: [{id, name}] }`.
 
@@ -923,6 +935,12 @@ Fórmula de índice: `x + y × anchura + capa × anchura × altura`. Capas: 0–
 **`copy-map`** — Duplica un mapa existente (tiles + eventos) con un nuevo nombre y el siguiente ID disponible. Añade automáticamente la entrada a `MapInfos.json`. Devuelve `{ new_map_id, name, copied_from }`.
 
 **`cleanup-project`** — Auditoría de solo lectura de las ranuras nulas en los arrays JSON de entidades. Informa `{ null_slots, active_entities, total_slots }` por tipo de entidad. NO reescribe archivos ni reasigna IDs.
+
+**`batch-update-entities`** — Aplica las mismas actualizaciones de campo a múltiples entidades del mismo tipo en una sola llamada. Útil para balanceo masivo: establecer HP en 10 enemigos, renombrar un grupo de ítems, etc. Devuelve `{ results: [{id, success}] }`. Requiere `confirm: true`.
+
+**`export-dialogue`** — Extrae todo el texto de diálogo de eventos de mapa y eventos comunes en un JSON estructurado. Cada entrada contiene `source_type`, `source_id`, `event_id`, `page`, `command_index`, `speaker` y `lines[]`. Caso de uso principal: preparar texto para traducción.
+
+**`import-dialogue`** — Escribe el diálogo traducido/modificado de vuelta al proyecto. Empareja entradas por `source_id`, `event_id`, `page` y `command_index` de `export-dialogue`. El número de líneas por entrada debe coincidir con el original. Requiere `confirm: true`.
 
 #### Control en tiempo real
 
