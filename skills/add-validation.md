@@ -12,7 +12,7 @@ Add deep input validation for an existing tool or entity type.
 
 1. Identify which `RPGMakerValidator` method needs updating (or if a new one is needed).
 
-2. Open `src/rpgmaker/validator.ts`. All validator methods return:
+2. Open `src/adapters/mz/validator.ts`. All validator methods return:
    ```typescript
    { valid: boolean, errors: string[], warnings: string[] }
    ```
