@@ -346,6 +346,286 @@ describe("battle event commands", () => {
   });
 });
 
+describe("system configuration commands", () => {
+  it("change-battle-bgm (132): code=132, parameters[0] is audio object with name/volume/pitch/pan", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-battle-bgm",
+      data: { name: "Battle1", volume: 80, pitch: 110, pan: 5 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(132);
+    expect(cmds[0].parameters[0]).toEqual({ name: "Battle1", volume: 80, pitch: 110, pan: 5 });
+  });
+
+  it("change-battle-bgm (132): uses defaults when fields omitted", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-battle-bgm",
+      data: { name: "Battle2" },
+    });
+    expect(cmds[0].code).toBe(132);
+    const audio = cmds[0].parameters[0] as Record<string, unknown>;
+    expect(audio.name).toBe("Battle2");
+    expect(audio.volume).toBe(90);
+    expect(audio.pitch).toBe(100);
+    expect(audio.pan).toBe(0);
+  });
+
+  it("change-victory-me (133): code=133, parameters[0] is audio object", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-victory-me",
+      data: { name: "Victory", volume: 100, pitch: 100, pan: 0 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(133);
+    expect(cmds[0].parameters[0]).toEqual({ name: "Victory", volume: 100, pitch: 100, pan: 0 });
+  });
+
+  it("change-defeat-me (139): code=139, parameters[0] is audio object", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-defeat-me",
+      data: { name: "Defeat", volume: 70, pitch: 95, pan: -10 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(139);
+    expect(cmds[0].parameters[0]).toEqual({ name: "Defeat", volume: 70, pitch: 95, pan: -10 });
+  });
+
+  it("change-vehicle-bgm (140): code=140, parameters[0]=vehicle_index, parameters[1] is audio object", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-vehicle-bgm",
+      data: { vehicle_index: 2, name: "Ship", volume: 85, pitch: 100, pan: 0 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(140);
+    expect(cmds[0].parameters[0]).toBe(2);
+    expect(cmds[0].parameters[1]).toEqual({ name: "Ship", volume: 85, pitch: 100, pan: 0 });
+  });
+
+  it("change-save-access (134): disabled=true → parameters[0]=1", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-save-access",
+      data: { disabled: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(134);
+    expect(cmds[0].parameters[0]).toBe(1);
+  });
+
+  it("change-save-access (134): disabled=false → parameters[0]=0", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-save-access",
+      data: { disabled: false },
+    });
+    expect(cmds[0].code).toBe(134);
+    expect(cmds[0].parameters[0]).toBe(0);
+  });
+
+  it("change-menu-access (135): disabled=true → parameters[0]=1", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-menu-access",
+      data: { disabled: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(135);
+    expect(cmds[0].parameters[0]).toBe(1);
+  });
+
+  it("change-menu-access (135): disabled=false → parameters[0]=0", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-menu-access",
+      data: { disabled: false },
+    });
+    expect(cmds[0].code).toBe(135);
+    expect(cmds[0].parameters[0]).toBe(0);
+  });
+
+  it("change-encounter (136): disabled=true → parameters[0]=1", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-encounter",
+      data: { disabled: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(136);
+    expect(cmds[0].parameters[0]).toBe(1);
+  });
+
+  it("change-encounter (136): disabled=false → parameters[0]=0", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-encounter",
+      data: { disabled: false },
+    });
+    expect(cmds[0].code).toBe(136);
+    expect(cmds[0].parameters[0]).toBe(0);
+  });
+
+  it("change-formation-access (137): disabled=true → parameters[0]=1", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-formation-access",
+      data: { disabled: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(137);
+    expect(cmds[0].parameters[0]).toBe(1);
+  });
+
+  it("change-formation-access (137): disabled=false → parameters[0]=0", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-formation-access",
+      data: { disabled: false },
+    });
+    expect(cmds[0].code).toBe(137);
+    expect(cmds[0].parameters[0]).toBe(0);
+  });
+
+  it("change-window-color (138): code=138, parameters[0] is [red, green, blue, 0]", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-window-color",
+      data: { red: 50, green: -30, blue: 100 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(138);
+    expect(cmds[0].parameters[0]).toEqual([50, -30, 100, 0]);
+  });
+});
+
+describe("follower and vehicle commands", () => {
+  it("change-followers (215): visible=true → parameters[0]=0", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-followers",
+      data: { visible: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(215);
+    expect(cmds[0].parameters[0]).toBe(0);
+  });
+
+  it("change-followers (215): visible=false → parameters[0]=1", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-followers",
+      data: { visible: false },
+    });
+    expect(cmds[0].code).toBe(215);
+    expect(cmds[0].parameters[0]).toBe(1);
+  });
+
+  it("gather-followers (216): code=216, parameters=[]", () => {
+    const cmds = commandInputToEventCommands({ type: "gather-followers" });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(216);
+    expect(cmds[0].parameters).toEqual([]);
+  });
+
+  it("set-vehicle-location (202): code=202, parameters include vehicle, map_id, x, y", () => {
+    const cmds = commandInputToEventCommands({
+      type: "set-vehicle-location",
+      data: { vehicle: 1, map_id: 3, x: 10, y: 7 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(202);
+    expect(cmds[0].parameters[0]).toBe(1);  // vehicle
+    expect(cmds[0].parameters[2]).toBe(3);  // map_id
+    expect(cmds[0].parameters[3]).toBe(10); // x
+    expect(cmds[0].parameters[4]).toBe(7);  // y
+  });
+
+  it("vehicle-ride (206): code=206, parameters=[]", () => {
+    const cmds = commandInputToEventCommands({ type: "vehicle-ride" });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(206);
+    expect(cmds[0].parameters).toEqual([]);
+  });
+});
+
+describe("weather and media commands", () => {
+  it("change-weather (236): code=236, parameters[0]=type, [1]=power, [2]=duration, [3]=wait", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-weather",
+      data: { type: "rain", power: 7, duration: 120, wait: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(236);
+    expect(cmds[0].parameters[0]).toBe("rain");
+    expect(cmds[0].parameters[1]).toBe(7);
+    expect(cmds[0].parameters[2]).toBe(120);
+    expect(cmds[0].parameters[3]).toBe(true);
+  });
+
+  it("change-weather (236): uses defaults when fields omitted", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-weather",
+      data: {},
+    });
+    expect(cmds[0].code).toBe(236);
+    expect(cmds[0].parameters[0]).toBe("none");
+    expect(cmds[0].parameters[1]).toBe(5);
+    expect(cmds[0].parameters[2]).toBe(60);
+    expect(cmds[0].parameters[3]).toBe(false);
+  });
+
+  it("play-movie (261): code=261, parameters[0]=filename", () => {
+    const cmds = commandInputToEventCommands({
+      type: "play-movie",
+      data: { filename: "intro_cutscene" },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(261);
+    expect(cmds[0].parameters[0]).toBe("intro_cutscene");
+  });
+});
+
+describe("movement and utility commands", () => {
+  it("get-location-info (285): code=285, parameters[0]=variable_id, [1]=info_type, [2]=location_type", () => {
+    const cmds = commandInputToEventCommands({
+      type: "get-location-info",
+      data: { variable_id: 5, info_type: 2, location_type: 1, x: 8, y: 4 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(285);
+    expect(cmds[0].parameters[0]).toBe(5);  // variable_id
+    expect(cmds[0].parameters[1]).toBe(2);  // info_type
+    expect(cmds[0].parameters[2]).toBe(1);  // location_type
+    expect(cmds[0].parameters[3]).toBe(8);  // x
+    expect(cmds[0].parameters[4]).toBe(4);  // y
+  });
+
+  it("set-movement-route (205): code=205, parameters[0]=character_id (-1 for player), parameters[1] is route object", () => {
+    const moveList = [{ code: 1, parameters: [] }, { code: 0, parameters: [] }];
+    const cmds = commandInputToEventCommands({
+      type: "set-movement-route",
+      data: { character_id: -1, list: moveList, repeat: true, skippable: false, wait: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(205);
+    expect(cmds[0].parameters[0]).toBe(-1);
+    const route = cmds[0].parameters[1] as Record<string, unknown>;
+    expect(route.list).toEqual(moveList);
+    expect(route.repeat).toBe(true);
+    expect(route.skippable).toBe(false);
+    expect(route.wait).toBe(true);
+  });
+
+  it("set-movement-route (205): defaults character_id to -1 (player) when omitted", () => {
+    const cmds = commandInputToEventCommands({
+      type: "set-movement-route",
+      data: {},
+    });
+    expect(cmds[0].code).toBe(205);
+    expect(cmds[0].parameters[0]).toBe(-1);
+    const route = cmds[0].parameters[1] as Record<string, unknown>;
+    expect(route.repeat).toBe(false);
+    expect(route.skippable).toBe(false);
+    expect(route.wait).toBe(false);
+  });
+
+  it("set-movement-route (205): non-player character_id (event on map)", () => {
+    const cmds = commandInputToEventCommands({
+      type: "set-movement-route",
+      data: { character_id: 3, list: [{ code: 2, parameters: [] }], repeat: false, skippable: true, wait: false },
+    });
+    expect(cmds[0].parameters[0]).toBe(3);
+  });
+});
+
 describe("defaultEventPage", () => {
   it("retorna estructura completa con valores por defecto", () => {
     const page = defaultEventPage();

@@ -40,6 +40,11 @@ export type MapEventCommandInput = {
     | "stop-bgm"
     | "fade-out"
     | "fade-in"
+    | "play-movie"
+    | "change-battle-bgm"
+    | "change-victory-me"
+    | "change-defeat-me"
+    | "change-vehicle-bgm"
     | "comment"
     | "change-variable"
     | "input-number"
@@ -64,6 +69,13 @@ export type MapEventCommandInput = {
     | "change-nickname"
     | "change-profile"
     | "scroll-map"
+    | "change-weather"
+    | "change-followers"
+    | "gather-followers"
+    | "set-vehicle-location"
+    | "vehicle-ride"
+    | "set-movement-route"
+    | "get-location-info"
     | "change-map-name-display"
     | "change-tileset"
     | "change-battle-back"
@@ -74,6 +86,11 @@ export type MapEventCommandInput = {
     | "open-save"
     | "game-over"
     | "return-to-title"
+    | "change-save-access"
+    | "change-menu-access"
+    | "change-encounter"
+    | "change-formation-access"
+    | "change-window-color"
     | "plugin-command"
     | "show-balloon"
     | "set-event-location"
@@ -416,6 +433,38 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
     case "stop-bgm":
       return [{ code: 242, indent: 0, parameters: [0] }];
 
+    case "change-battle-bgm": {
+      const name = String(obj["name"] ?? "");
+      const volume = Number(obj["volume"] ?? 90);
+      const pitch = Number(obj["pitch"] ?? 100);
+      const pan = Number(obj["pan"] ?? 0);
+      return [{ code: 132, indent: 0, parameters: [{ name, volume, pitch, pan }] }];
+    }
+    case "change-victory-me": {
+      const name = String(obj["name"] ?? "");
+      const volume = Number(obj["volume"] ?? 90);
+      const pitch = Number(obj["pitch"] ?? 100);
+      const pan = Number(obj["pan"] ?? 0);
+      return [{ code: 133, indent: 0, parameters: [{ name, volume, pitch, pan }] }];
+    }
+    case "change-defeat-me": {
+      const name = String(obj["name"] ?? "");
+      const volume = Number(obj["volume"] ?? 90);
+      const pitch = Number(obj["pitch"] ?? 100);
+      const pan = Number(obj["pan"] ?? 0);
+      return [{ code: 139, indent: 0, parameters: [{ name, volume, pitch, pan }] }];
+    }
+    case "change-vehicle-bgm": {
+      const vehicle = Number(obj["vehicle_index"] ?? 0);
+      const name = String(obj["name"] ?? "");
+      const volume = Number(obj["volume"] ?? 90);
+      const pitch = Number(obj["pitch"] ?? 100);
+      const pan = Number(obj["pan"] ?? 0);
+      return [{ code: 140, indent: 0, parameters: [vehicle, { name, volume, pitch, pan }] }];
+    }
+    case "play-movie":
+      return [{ code: 261, indent: 0, parameters: [String(obj["filename"] ?? "")] }];
+
     case "fade-out": {
       const duration = Number(obj["duration"] ?? (typeof rawData === "string" && rawData ? rawData : 24)) || 24;
       return [{ code: 221, indent: 0, parameters: [duration] }];
@@ -585,6 +634,47 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
       return [{ code: 204, indent: 0, parameters: [direction, distance, speed, wait] }];
     }
 
+    case "change-weather": {
+      const type = String(obj["type"] ?? "none");
+      const power = Number(obj["power"] ?? 5);
+      const duration = Number(obj["duration"] ?? 60);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 236, indent: 0, parameters: [type, power, duration, wait] }];
+    }
+
+    case "change-followers":
+      return [{ code: 215, indent: 0, parameters: [Boolean(obj["visible"] ?? true) ? 0 : 1] }];
+    case "gather-followers":
+      return [{ code: 216, indent: 0, parameters: [] }];
+
+    case "set-vehicle-location": {
+      const vehicle = Number(obj["vehicle"] ?? 0);
+      const map_id = Number(obj["map_id"] ?? 1);
+      const x = Number(obj["x"] ?? 0);
+      const y = Number(obj["y"] ?? 0);
+      return [{ code: 202, indent: 0, parameters: [vehicle, 0, map_id, x, y] }];
+    }
+    case "vehicle-ride":
+      return [{ code: 206, indent: 0, parameters: [] }];
+
+    case "set-movement-route": {
+      const character_id = Number(obj["character_id"] ?? -1);
+      const list = Array.isArray(obj["list"]) ? (obj["list"] as Array<{ code: number; parameters: unknown[] }>) : [];
+      const repeat = Boolean(obj["repeat"] ?? false);
+      const skippable = Boolean(obj["skippable"] ?? false);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 205, indent: 0, parameters: [character_id, { list, repeat, skippable, wait }] }];
+    }
+
+    case "get-location-info": {
+      const variable_id = Number(obj["variable_id"] ?? 1);
+      const info_type = Number(obj["info_type"] ?? 0);
+      const location_type = Number(obj["location_type"] ?? 0);
+      const x = Number(obj["x"] ?? 0);
+      const y = Number(obj["y"] ?? 0);
+      return [{ code: 285, indent: 0, parameters: [variable_id, info_type, location_type, x, y] }];
+    }
+
     case "change-map-name-display": {
       const show = Boolean(obj["show"] ?? true);
       return [{ code: 281, indent: 0, parameters: [show ? 0 : 1] }];
@@ -629,6 +719,21 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
 
     case "return-to-title":
       return [{ code: 354, indent: 0, parameters: [] }];
+
+    case "change-save-access":
+      return [{ code: 134, indent: 0, parameters: [Boolean(obj["disabled"] ?? false) ? 1 : 0] }];
+    case "change-menu-access":
+      return [{ code: 135, indent: 0, parameters: [Boolean(obj["disabled"] ?? false) ? 1 : 0] }];
+    case "change-encounter":
+      return [{ code: 136, indent: 0, parameters: [Boolean(obj["disabled"] ?? false) ? 1 : 0] }];
+    case "change-formation-access":
+      return [{ code: 137, indent: 0, parameters: [Boolean(obj["disabled"] ?? false) ? 1 : 0] }];
+    case "change-window-color": {
+      const red = Number(obj["red"] ?? 0);
+      const green = Number(obj["green"] ?? 0);
+      const blue = Number(obj["blue"] ?? 0);
+      return [{ code: 138, indent: 0, parameters: [[red, green, blue, 0]] }];
+    }
 
     case "plugin-command": {
       const plugin_name = String(obj["plugin_name"] ?? "");
