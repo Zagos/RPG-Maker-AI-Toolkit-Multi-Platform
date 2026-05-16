@@ -1,17 +1,14 @@
-import * as fs from "fs";
-import * as path from "path";
 import type { HandlerContext } from "./types.js";
 
 export async function handleEditSystem(ctx: HandlerContext): Promise<string> {
-  const { input, writer, projectPath, changeLog } = ctx;
+  const { input, reader, writer, changeLog } = ctx;
 
   try {
-    const systemPath = path.join(projectPath, "data", "System.json");
-    if (!fs.existsSync(systemPath)) {
-      return JSON.stringify({ error: "System.json not found in project data directory" });
+    const system = reader.readProjectConfig();
+    if (Object.keys(system).length === 0) {
+      return JSON.stringify({ error: "System configuration file not found in project data directory" });
     }
 
-    const system = JSON.parse(fs.readFileSync(systemPath, "utf-8")) as Record<string, unknown>;
     const updated: string[] = [];
 
     if (input.game_title !== undefined) {
@@ -148,7 +145,7 @@ export async function handleEditSystem(ctx: HandlerContext): Promise<string> {
       return JSON.stringify({ error: "No fields to update. Provide at least one property." });
     }
 
-    writer.writeDataFile("System.json", system);
+    writer.writeSystemConfig(system);
 
     changeLog.append({
       tool: "edit-system",

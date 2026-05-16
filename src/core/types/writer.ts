@@ -34,6 +34,7 @@ export interface IProjectWriter {
   ): void;
   listPlugins(): Array<{ name: string; status: boolean; description: string; parameters: Record<string, unknown> }>;
   removePluginFromRegistry(pluginName: string): void;
+  writeSystemConfig(data: Record<string, unknown>): void;
   refreshVersionId(): void;
   getBackups(filename?: string): string[];
   restoreFromBackup(backupFilename: string): void;

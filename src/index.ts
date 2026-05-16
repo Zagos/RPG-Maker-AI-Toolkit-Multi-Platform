@@ -389,7 +389,7 @@ const RUBY_UNSUPPORTED_TOOLS = new Set<string>([
   "create-plugin", "create-plugin-advanced", "manage-plugins",
   "edit-plugin-parameters", "reorder-plugin",
   // mz-specific data structures
-  "edit-system", "read-system-extended", "validate-project",
+  "validate-project",
 ]);
 
 const RUBY_ENGINE_NAMES: Record<string, string> = {

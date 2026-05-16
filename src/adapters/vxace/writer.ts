@@ -180,6 +180,10 @@ export class VXAceWriter implements IProjectWriter {
     } catch { /* best-effort */ }
   }
 
+  writeSystemConfig(data: Record<string, unknown>): void {
+    this.writeDataFile(`System${this.ext}`, data);
+  }
+
   // Plugins: not supported in VX Ace (uses Ruby scripts, not JS plugins)
   writePlugin(_filename: string, _content: string): void {
     throw new Error("RPG Maker VX Ace uses Ruby scripts, not JavaScript plugins.");

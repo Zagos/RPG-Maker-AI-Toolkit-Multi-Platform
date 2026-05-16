@@ -1,14 +1,13 @@
-import * as fs from "fs";
-import * as path from "path";
 import type { HandlerContext } from "./types.js";
 
 export async function handleReadSystemExtended(ctx: HandlerContext): Promise<string> {
-  const { input, projectPath } = ctx;
+  const { input, reader } = ctx;
   const section = (input.section as string | undefined) ?? "all";
   try {
-    const filePath = path.join(projectPath, "data", "System.json");
-    if (!fs.existsSync(filePath)) return JSON.stringify({ error: "System.json not found" });
-    const system = JSON.parse(fs.readFileSync(filePath, "utf-8")) as Record<string, unknown>;
+    const system = reader.readProjectConfig();
+    if (Object.keys(system).length === 0) {
+      return JSON.stringify({ error: "System configuration file not found in project data directory" });
+    }
 
     const result: Record<string, unknown> = {};
     if (section === "terms" || section === "all") result.terms = system.terms;
