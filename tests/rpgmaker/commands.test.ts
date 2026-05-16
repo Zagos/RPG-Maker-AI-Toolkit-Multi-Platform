@@ -208,6 +208,144 @@ describe("createDialogueEventCommands", () => {
   });
 });
 
+describe("tint-picture command", () => {
+  it("generates code 234 with picture_id, tone, duration, wait", () => {
+    const cmds = commandInputToEventCommands({
+      type: "tint-picture",
+      data: { picture_id: 3, tone: [-68, -68, 0, 68], duration: 30, wait: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(234);
+    expect(cmds[0].parameters[0]).toBe(3);
+    expect(cmds[0].parameters[1]).toEqual([-68, -68, 0, 68]);
+    expect(cmds[0].parameters[2]).toBe(30);
+    expect(cmds[0].parameters[3]).toBe(true);
+  });
+
+  it("uses defaults when optional fields are omitted", () => {
+    const cmds = commandInputToEventCommands({
+      type: "tint-picture",
+      data: { picture_id: 1 },
+    });
+    expect(cmds[0].code).toBe(234);
+    expect(cmds[0].parameters[0]).toBe(1);
+    expect(cmds[0].parameters[1]).toEqual([0, 0, 0, 0]);
+    expect(cmds[0].parameters[2]).toBe(60);
+    expect(cmds[0].parameters[3]).toBe(false);
+  });
+});
+
+describe("battle event commands", () => {
+  it("change-enemy-hp (331): enemy_index, operation, operand, allow_ko", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-enemy-hp",
+      data: { enemy_index: 2, operation: 1, operand: 50, allow_ko: true },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(331);
+    expect(cmds[0].parameters[0]).toBe(2);   // enemy_index
+    expect(cmds[0].parameters[2]).toBe(1);   // operation
+    expect(cmds[0].parameters[4]).toBe(50);  // operand
+    expect(cmds[0].parameters[5]).toBe(true); // allow_ko
+  });
+
+  it("change-enemy-mp (332): enemy_index, operation, operand", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-enemy-mp",
+      data: { enemy_index: 0, operation: 0, operand: 20 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(332);
+    expect(cmds[0].parameters[0]).toBe(0);  // enemy_index
+    expect(cmds[0].parameters[2]).toBe(0);  // operation
+    expect(cmds[0].parameters[4]).toBe(20); // operand
+  });
+
+  it("change-enemy-state (333): enemy_index, action, state_id", () => {
+    const cmds = commandInputToEventCommands({
+      type: "change-enemy-state",
+      data: { enemy_index: 1, action: 1, state_id: 4 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(333);
+    expect(cmds[0].parameters[0]).toBe(1); // enemy_index
+    expect(cmds[0].parameters[1]).toBe(1); // action
+    expect(cmds[0].parameters[2]).toBe(4); // state_id
+  });
+
+  it("recover-all-enemies (334): enemy_index -1 means all", () => {
+    const cmds = commandInputToEventCommands({
+      type: "recover-all-enemies",
+      data: { enemy_index: -1 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(334);
+    expect(cmds[0].parameters[0]).toBe(-1);
+  });
+
+  it("recover-all-enemies (334): defaults to -1 when enemy_index omitted", () => {
+    const cmds = commandInputToEventCommands({
+      type: "recover-all-enemies",
+      data: {},
+    });
+    expect(cmds[0].code).toBe(334);
+    expect(cmds[0].parameters[0]).toBe(-1);
+  });
+
+  it("enemy-appear (335): enemy_index in parameters", () => {
+    const cmds = commandInputToEventCommands({
+      type: "enemy-appear",
+      data: { enemy_index: 3 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(335);
+    expect(cmds[0].parameters[0]).toBe(3);
+  });
+
+  it("enemy-transform (336): enemy_index and enemy_id", () => {
+    const cmds = commandInputToEventCommands({
+      type: "enemy-transform",
+      data: { enemy_index: 0, enemy_id: 5 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(336);
+    expect(cmds[0].parameters[0]).toBe(0); // enemy_index
+    expect(cmds[0].parameters[1]).toBe(5); // enemy_id
+  });
+
+  it("show-battle-animation (337): animation_id and enemy_index", () => {
+    const cmds = commandInputToEventCommands({
+      type: "show-battle-animation",
+      data: { animation_id: 7, enemy_index: 2 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(337);
+    expect(cmds[0].parameters[0]).toBe(7);  // animation_id
+    expect(cmds[0].parameters[1]).toBe(2);  // enemy_index
+  });
+
+  it("show-battle-animation (337): enemy_index defaults to -1 (all enemies)", () => {
+    const cmds = commandInputToEventCommands({
+      type: "show-battle-animation",
+      data: { animation_id: 3 },
+    });
+    expect(cmds[0].parameters[1]).toBe(-1);
+  });
+
+  it("force-action (338): subject_type, subject_index, skill_id, target_index", () => {
+    const cmds = commandInputToEventCommands({
+      type: "force-action",
+      data: { subject_type: 1, subject_index: 0, skill_id: 10, target_index: -1 },
+    });
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].code).toBe(338);
+    expect(cmds[0].parameters[0]).toBe(1);   // subject_type
+    expect(cmds[0].parameters[1]).toBe(0);   // subject_index
+    expect(cmds[0].parameters[2]).toBe(10);  // skill_id
+    expect(cmds[0].parameters[3]).toBe(-1);  // target_index
+  });
+});
+
 describe("defaultEventPage", () => {
   it("retorna estructura completa con valores por defecto", () => {
     const page = defaultEventPage();

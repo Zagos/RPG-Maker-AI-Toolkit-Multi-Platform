@@ -1,5 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
 import type { HandlerContext } from "./types.js";
 
 const DIR_ALL_BLOCKED = 0x000F;
@@ -8,7 +6,7 @@ const TERRAIN_TAG_SHIFT = 12;
 const TERRAIN_TAG_MASK = 0xF000;
 
 export async function handleEditTileset(ctx: HandlerContext): Promise<string> {
-  const { input, reader, writer, projectPath, changeLog } = ctx;
+  const { input, reader, writer, changeLog } = ctx;
 
   try {
     const tilesetId = input.tileset_id as number | undefined;
@@ -47,14 +45,7 @@ export async function handleEditTileset(ctx: HandlerContext): Promise<string> {
       flags[tileId] = flag;
     }
 
-    const updatedTileset = { ...tileset, flags };
-
-    const tilesetsPath = path.join(projectPath, "data", "Tilesets.json");
-    const allTilesets = JSON.parse(fs.readFileSync(tilesetsPath, "utf-8")) as Array<Record<string, unknown> | null>;
-    const idx = allTilesets.findIndex((t) => t !== null && (t as Record<string, unknown>).id === tilesetId);
-    if (idx !== -1) allTilesets[idx] = updatedTileset;
-
-    writer.writeDataFile("Tilesets.json", allTilesets);
+    writer.updateTileset(tilesetId, { flags });
 
     changeLog.append({
       tool: "edit-tileset",

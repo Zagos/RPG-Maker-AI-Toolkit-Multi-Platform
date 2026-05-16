@@ -1129,6 +1129,68 @@ Archetypes: `warrior` `mage` `rogue` `healer` `paladin` `ranger`
 
 ---
 
+### Battle event commands (Troop pages)
+
+Battle event commands are available inside troop event pages (via `edit-troop-events`). They only work during battle and have no effect in map events.
+
+**EN:** "On turn 2 of the boss fight: deal 500 damage to the first enemy (no KO), recover all enemies, play a flash animation, and force the boss to use skill 5 against a random target."
+**ES:** "En el turno 2 del combate con el jefe: inflige 500 de daño al primer enemigo (sin KO), recupera a todos los enemigos, reproduce una animación y fuerza al jefe a usar la habilidad 5 contra un objetivo aleatorio."
+
+```json
+{
+  "troop_id": 2,
+  "mode": "append",
+  "pages": [
+    {
+      "span": 0,
+      "conditions": { "turnValid": true, "turnA": 2, "turnB": 0 },
+      "commands": [
+        { "type": "change-enemy-hp", "data": { "enemy_index": 0, "operation": 1, "operand": 500, "allow_ko": false } },
+        { "type": "recover-all-enemies", "data": { "enemy_index": -1 } },
+        { "type": "show-battle-animation", "data": { "animation_id": 3, "enemy_index": -1 } },
+        { "type": "force-action", "data": { "subject_type": 0, "subject_index": 0, "skill_id": 5, "target_index": -1 } }
+      ]
+    }
+  ]
+}
+```
+
+**EN:** "When enemy 0 HP drops to 50%: transform it into enemy 5, add a Rage state (state 8) to it, and reduce its MP by 200."
+**ES:** "Cuando el HP del enemigo 0 baje al 50%: transfórmalo en el enemigo 5, aplícale el estado Furia (estado 8) y reduce su MP en 200."
+
+```json
+{
+  "troop_id": 3,
+  "mode": "append",
+  "pages": [
+    {
+      "span": 0,
+      "conditions": { "enemyValid": true, "enemyIndex": 0, "enemyHp": 50 },
+      "commands": [
+        { "type": "enemy-transform", "data": { "enemy_index": 0, "enemy_id": 5 } },
+        { "type": "change-enemy-state", "data": { "enemy_index": 0, "action": 0, "state_id": 8 } },
+        { "type": "change-enemy-mp", "data": { "enemy_index": 0, "operation": 1, "operand": 200 } }
+      ]
+    }
+  ]
+}
+```
+
+Battle command quick reference:
+
+| Type | Code | Notes |
+|---|---|---|
+| `change-enemy-hp` | 331 | `operation`: 0=add, 1=sub, 2=mul, 3=div, 4=mod |
+| `change-enemy-mp` | 332 | Same `operation` values as HP |
+| `change-enemy-state` | 333 | `action`: 0=add, 1=remove |
+| `recover-all-enemies` | 334 | `enemy_index: -1` targets all |
+| `enemy-appear` | 335 | Make a hidden enemy visible |
+| `enemy-transform` | 336 | Replace enemy with a different enemy type |
+| `show-battle-animation` | 337 | `enemy_index: -1` plays on all enemies |
+| `force-action` | 338 | `subject_type`: 0=enemy, 1=actor; `target_index: -1` = random |
+
+---
+
 ## Common Events
 
 ### `create-common-event`
@@ -1448,7 +1510,7 @@ Archetypes: `warrior` `mage` `rogue` `healer` `paladin` `ranger`
 }
 ```
 
-Command types reference: `plugin-command` `save-bgm` `resume-bgm` `stop-se` `change-parameter` `change-name` `change-nickname` `scroll-map` `control-timer` `game-over` `return-to-title` `open-menu` `open-save` `erase-event` `change-map-name-display` `change-tileset` `show-balloon` `set-event-location` `move-picture` `rotate-picture` `change-actor-images` `toggle-party-member`
+Command types reference: `plugin-command` `save-bgm` `resume-bgm` `stop-se` `change-parameter` `change-name` `change-nickname` `scroll-map` `control-timer` `game-over` `return-to-title` `open-menu` `open-save` `erase-event` `change-map-name-display` `change-tileset` `show-balloon` `set-event-location` `show-picture` `tint-picture` `move-picture` `rotate-picture` `erase-picture` `change-actor-images` `toggle-party-member`
 
 **EN:** "Show an exclamation mark above the player when they discover something."
 **ES:** "Muestra un signo de exclamación sobre el jugador cuando descubre algo."
@@ -1470,6 +1532,15 @@ Command types reference: `plugin-command` `save-bgm` `resume-bgm` `stop-se` `cha
 ```json
 { "commands": [{ "type": "move-picture", "data": { "picture_id": 1, "x": 400, "y": 300, "duration": 120, "wait": true } }] }
 ```
+
+**EN:** "Apply a sepia/dark tint to picture 1 over 60 frames and wait for it to finish."
+**ES:** "Aplica un tinte sepia/oscuro a la imagen 1 en 60 frames y espera a que termine."
+
+```json
+{ "commands": [{ "type": "tint-picture", "data": { "picture_id": 1, "tone": [-68, -68, 0, 170], "duration": 60, "wait": true } }] }
+```
+
+`tone` is `[r, g, b, gray]` where r/g/b range from -255 to 255 and gray from 0 to 255. The values `[-68, -68, 0, 170]` produce a sepia/dark effect. Use `[0, 0, 0, 0]` to clear any tint.
 
 **EN:** "Change Hero's sprite to the armored version after equipping the heavy armor."
 **ES:** "Cambia el sprite del héroe a la versión con armadura después de equipar la armadura pesada."

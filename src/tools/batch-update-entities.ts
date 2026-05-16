@@ -8,7 +8,7 @@ export const BatchUpdateEntitiesTool: Tool = {
     properties: {
       entity_type: {
         type: "string",
-        enum: ["Actor", "Item", "Weapon", "Armor", "Skill", "Class", "State", "Enemy", "Troop", "CommonEvent"],
+        enum: ["Actor", "Item", "Weapon", "Armor", "Skill", "Class", "State", "Enemy", "Troop", "CommonEvent", "Animation", "Tileset"],
         description: "Type of entity to update",
       },
       entity_ids: {

@@ -29,6 +29,12 @@ const BASE_SYSTEM = {
   victoryMe: { name: "Victory1", pan: 0, pitch: 100, volume: 90 },
   defeatMe: { name: "Defeat1", pan: 0, pitch: 100, volume: 90 },
   versionId: 1,
+  optAutosave: false,
+  optDisplayTp: true,
+  optSlipDeath: false,
+  optFloorDeath: true,
+  optFollowerDistance: false,
+  optTransparent: true,
 };
 
 function createTempProject(): string {
@@ -134,5 +140,24 @@ describe("handleEditSystem", () => {
     const entries = ctx.changeLog.read();
     expect(entries[0].tool).toBe("edit-system");
     expect(entries[0].action).toBe("update");
+  });
+
+  it("updates all 6 opt_* boolean fields correctly", async () => {
+    const result = JSON.parse(await handleEditSystem(makeCtx(dir, {
+      opt_autosave: true,
+      opt_display_tp: false,
+      opt_slip_death: true,
+      opt_floor_death: false,
+      opt_follower_distance: true,
+      opt_transparent: false,
+    })));
+    expect(result.success).toBe(true);
+    const sys = readJson(path.join(dir, "data", "System.json")) as Record<string, unknown>;
+    expect(sys.optAutosave).toBe(true);
+    expect(sys.optDisplayTp).toBe(false);
+    expect(sys.optSlipDeath).toBe(true);
+    expect(sys.optFloorDeath).toBe(false);
+    expect(sys.optFollowerDistance).toBe(true);
+    expect(sys.optTransparent).toBe(false);
   });
 });

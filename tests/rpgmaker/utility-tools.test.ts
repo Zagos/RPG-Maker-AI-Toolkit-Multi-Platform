@@ -341,6 +341,42 @@ describe("handleFindAndReplace", () => {
     expect(Array.isArray(result.files_changed)).toBe(true);
     expect(result.files_changed).toContain("Actors.json");
   });
+
+  it("replaces in nickname and profile fields when scope is notes", async () => {
+    // Set up an actor with nickname and profile containing the search term
+    writeJson(path.join(dir, "data", "Actors.json"), [
+      null,
+      {
+        id: 1,
+        name: "Harold",
+        classId: 1,
+        initialLevel: 1,
+        maxLevel: 99,
+        traits: [],
+        note: "",
+        nickname: "The Hero",
+        profile: "A brave warrior named Hero",
+      },
+    ]);
+
+    const result = JSON.parse(
+      await handleFindAndReplace(
+        makeCtx(dir, { find: "Hero", replace: "Legend", confirm: true, targets: ["notes"] })
+      )
+    );
+    expect(result.success).toBe(true);
+    expect(result.total_replacements).toBeGreaterThanOrEqual(2);
+
+    const actors = readJson(path.join(dir, "data", "Actors.json")) as Array<{
+      id: number; name: string; nickname: string; profile: string;
+    } | null>;
+    // nickname: "The Hero" → "The Legend"
+    expect(actors[1]?.nickname).toBe("The Legend");
+    // profile: "A brave warrior named Hero" → "A brave warrior named Legend"
+    expect(actors[1]?.profile).toBe("A brave warrior named Legend");
+    // name should be unchanged (targets=["notes"] does not include "names")
+    expect(actors[1]?.name).toBe("Harold");
+  });
 });
 
 // ── copy-map ──────────────────────────────────────────────────────────────────
