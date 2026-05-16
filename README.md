@@ -393,8 +393,11 @@ Plugin filenames are sanitized on write: names with `<>:"/\|?*`, path separators
 | Tool | Key inputs |
 |---|---|
 | `edit-plugin-parameters` | `plugin_name` · `parameters {key: "value", …}` |
+| `reorder-plugin` | `plugin_name` · `position (first\|last\|before\|after)` · `relative_plugin?` |
 
 **`edit-plugin-parameters`** — Update individual parameter values of a registered plugin. RPG Maker MZ stores all plugin parameter values as strings. Partial updates are supported — only the keys you provide are changed; all other parameters are preserved.
+
+**`reorder-plugin`** — Change the load order of a plugin in `js/plugins.js`. `position: "before"` and `"after"` require `relative_plugin` to specify the reference plugin. Plugin load order is critical in RPG Maker MZ — compatibility layers must load before the plugins they extend.
 
 ---
 
@@ -436,9 +439,13 @@ All create tools return `{ success, <type>_id, name }`.
 | Tool | Key inputs |
 |---|---|
 | `search-entity` | `entity_type` · `query (substring search on name)` |
-| `duplicate-entity` | `entity_type` · `entity_id` · `new_name?` |
+| `duplicate-entity` | `entity_type` · `entity_id` · `new_name` |
 | `export-project-summary` | *(no required input)* |
 | `edit-map-info` | `map_id` · `name?` · `parent_id?` · `order?` · `expanded?` |
+| `validate-project` | `entity_types?` · `include_warnings?` |
+| `find-and-replace` | `find` · `replace` · `targets?` · `confirm: true` |
+| `copy-map` | `source_map_id` · `new_name` · `parent_id?` |
+| `cleanup-project` | `entity_types?` |
 
 **`search-entity`** — Case-insensitive substring search across any entity type (Actor, Item, Weapon, Armor, Skill, Class, State, Enemy, Troop, CommonEvent, Animation, Tileset). Returns `{ matches: [{id, name}] }`.
 
@@ -447,6 +454,14 @@ All create tools return `{ success, <type>_id, name }`.
 **`export-project-summary`** — Returns a compact overview of the whole project: actor/enemy/skill counts, map names, switch and variable totals. Useful for getting oriented in an unfamiliar project.
 
 **`edit-map-info`** — Edit only the MapInfos.json metadata entry (name, parent, order, scroll) without touching the map tile/event file.
+
+**`validate-project`** — Run all entity validators across the entire project and return a structured report. Returns `{ valid, total_checked, total_errors, total_warnings, issues: [{entity_type, id, name, errors[], warnings[]}] }`. Filter with `entity_types` to limit scope.
+
+**`find-and-replace`** — Bulk search and replace text across entity names, notes, and event command text in all data files and map files. `targets`: `"names"` `"notes"` `"event_commands"` (default: all three). Requires `confirm: true`. Returns `{ total_replacements, files_changed[] }`.
+
+**`copy-map`** — Duplicate an existing map (tiles + events) with a new name and the next available ID. Automatically adds the new entry to `MapInfos.json`. Returns `{ new_map_id, name, copied_from }`.
+
+**`cleanup-project`** — Read-only audit of null slots in entity JSON arrays. Reports `{ null_slots, active_entities, total_slots }` per entity type. Does NOT rewrite files or reassign IDs.
 
 ---
 
@@ -484,6 +499,8 @@ The plugin polls the MCP server every 500 ms via HTTP. All commands are confirme
 | `control-weather-runtime` | `type (none\|rain\|storm\|snow)` · `power (0-9)` · `duration?` |
 | `play-audio-runtime` | `action (bgm\|bgs\|se\|me\|stop_bgm\|stop_bgs\|stop_se)` · `name?` · `volume?` · `pitch?` · `pan?` |
 | `get-map-state-runtime` | Read current map dimensions, player position, and active weather |
+| `control-timer-runtime` | `action (start\|stop\|get)` · `frames?` (required for start) |
+| `get-battle-state-runtime` | *(no required input — must be in battle)* |
 
 **`get-switch`** / **`get-variable`** — Return `{ id, value, name? }`. Name is read from `System.json` if defined.
 
@@ -494,6 +511,10 @@ The plugin polls the MCP server every 500 ms via HTTP. All commands are confirme
 **`call-common-event`** — Validates the event exists in `CommonEvents.json` before executing. Logs to change log.
 
 **`modify-actor-runtime`** — `field`: `level` `exp` `hp` `mp` `tp`. `mode`: `set` (assign directly) or `add` (delta). Multiple operations per call.
+
+**`control-timer-runtime`** — Start, stop, or query the in-game countdown timer. `action: "get"` returns `{ working, seconds }`. `action: "start"` requires `frames` (60 frames = 1 second). Uses `waitForAck` for write actions, `waitForGameState` for get.
+
+**`get-battle-state-runtime`** — Read current battle state while in a battle: `{ in_battle, turn, enemies: [{id,name,hp,mhp,mp,alive,states}], party: [{id,name,hp,mhp,mp,alive}] }`. Returns `in_battle: false` when not in battle.
 
 **Typical workflow:**
 
@@ -531,14 +552,14 @@ Backups are created automatically before every write and stored in `<project>/ba
 | Tool | Key inputs |
 |---|---|
 | `batch-edit` | `operations [{tool, input}]` (max 50) · `stop_on_error?` |
-| `batch-create-entities` | `entity_type (Actor\|Item\|Weapon\|Armor\|Skill\|Class\|State\|Enemy)` · `entities [array of entity objects]` (max 50) |
+| `batch-create-entities` | `entity_type (Actor\|Item\|Weapon\|Armor\|Skill\|Class\|State\|Enemy\|Troop\|CommonEvent\|Animation)` · `entities [array of entity objects]` (max 50) |
 | `batch-delete-entities` | `entity_type` · `entity_ids [array of integers]` (max 100) · `confirm: true` |
 
 **`batch-edit`** — Executes multiple tool calls in a single MCP round-trip. Each operation runs in order; failures are reported per-operation and do not block the rest (unless `stop_on_error: true`).
 
 **`batch-create-entities`** — Create multiple entities of the same type atomically. Each object in `entities` needs at least `name`. Returns `{ results: [{index, success, id}] }`.
 
-**`batch-delete-entities`** — Null out multiple entities in one operation. Supports all entity types including Animation, Troop, CommonEvent. Requires `confirm: true`. Returns per-ID success/error.
+**`batch-delete-entities`** — Null out multiple entities in one operation. Supports all entity types including Animation, Troop, CommonEvent, and Tileset. Requires `confirm: true`. Returns per-ID success/error.
 
 ```json
 {
@@ -857,8 +878,11 @@ Fórmula de índice: `x + y × anchura + capa × anchura × altura`. Capas: 0–
 **`manage-plugins`** — `list` devuelve todos los plugins registrados con nombre/estado/descripción. `enable`/`disable` activan o desactivan. `delete` los elimina del registro y borra el archivo `.js` si existe.
 
 | `edit-plugin-parameters` | `plugin_name` · `parameters {clave: "valor", …}` |
+| `reorder-plugin` | `plugin_name` · `position (first\|last\|before\|after)` · `relative_plugin?` |
 
 **`edit-plugin-parameters`** — Actualiza parámetros individuales de un plugin registrado. Solo se cambian las claves indicadas; el resto se preserva. Los valores deben ser strings (formato de RPG Maker MZ).
+
+**`reorder-plugin`** — Cambia el orden de carga de un plugin en `js/plugins.js`. `position: "before"` y `"after"` requieren `relative_plugin`. El orden de plugins es crítico en RPG Maker MZ.
 
 #### Animaciones
 
@@ -870,6 +894,35 @@ Fórmula de índice: `x + y × anchura + capa × anchura × altura`. Capas: 0–
 **`read-animation`** — Devuelve el objeto de animación completo cuando se proporciona `animation_id`. Sin ID lista todas las animaciones con id y nombre.
 
 **`edit-animation`** — Edita metadatos: `effect_name` referencia un archivo Effekseer de la carpeta `effects/` (sin extensión). `display_type`: 0=cabeza objetivo, 1=centro objetivo, 2=pantalla completa, -1=frente pantalla.
+
+#### Herramientas de utilidad
+
+| Herramienta | Campos clave |
+|---|---|
+| `search-entity` | `entity_type` · `query (búsqueda de subcadena en nombre)` |
+| `duplicate-entity` | `entity_type` · `entity_id` · `new_name` |
+| `export-project-summary` | *(sin entrada requerida)* |
+| `edit-map-info` | `map_id` · `name?` · `parent_id?` · `order?` · `expanded?` |
+| `validate-project` | `entity_types?` · `include_warnings?` |
+| `find-and-replace` | `find` · `replace` · `targets?` · `confirm: true` |
+| `copy-map` | `source_map_id` · `new_name` · `parent_id?` |
+| `cleanup-project` | `entity_types?` |
+
+**`search-entity`** — Búsqueda de subcadena sin distinción de mayúsculas en cualquier tipo de entidad. Devuelve `{ matches: [{id, name}] }`.
+
+**`duplicate-entity`** — Clona una entidad con un nuevo nombre y el siguiente ID disponible. Devuelve `{ success, new_id, name }`.
+
+**`export-project-summary`** — Devuelve un resumen compacto del proyecto: conteos de actores/enemigos/habilidades, nombres de mapas, totales de switches y variables.
+
+**`edit-map-info`** — Edita solo la entrada de metadatos de MapInfos.json (nombre, padre, orden) sin tocar el archivo de tiles/eventos.
+
+**`validate-project`** — Ejecuta todos los validadores sobre el proyecto completo y devuelve un informe estructurado. Devuelve `{ valid, total_checked, total_errors, total_warnings, issues: [{entity_type, id, name, errors[], warnings[]}] }`. Filtra con `entity_types` para limitar el alcance.
+
+**`find-and-replace`** — Busca y reemplaza texto en masa en nombres de entidades, notas y texto de comandos de evento en todos los archivos de datos y mapas. `targets`: `"names"` `"notes"` `"event_commands"` (por defecto: los tres). Requiere `confirm: true`. Devuelve `{ total_replacements, files_changed[] }`.
+
+**`copy-map`** — Duplica un mapa existente (tiles + eventos) con un nuevo nombre y el siguiente ID disponible. Añade automáticamente la entrada a `MapInfos.json`. Devuelve `{ new_map_id, name, copied_from }`.
+
+**`cleanup-project`** — Auditoría de solo lectura de las ranuras nulas en los arrays JSON de entidades. Informa `{ null_slots, active_entities, total_slots }` por tipo de entidad. NO reescribe archivos ni reasigna IDs.
 
 #### Control en tiempo real
 
@@ -898,6 +951,17 @@ Estas herramientas controlan el **juego en ejecución**. Requieren:
 | `run-battle-suite` | Corre la misma batalla N veces y devuelve estadísticas agregadas: win rate, HP medio, daño infligido/recibido |
 | `execute-script` | Evalúa JavaScript arbitrario en el juego en ejecución (`code`, `timeout?`) |
 | `show-message` | Muestra un mensaje en la ventana de mensajes del juego (`text`, `speaker?`) |
+| `get-actor-runtime` | Lee el estado en vivo de un actor: nivel, HP, MP, TP, estados, equipo, habilidades |
+| `manage-party-runtime` | `action (get\|add\|remove)` · `actor_id?` — leer grupo o añadir/eliminar miembro |
+| `control-weather-runtime` | `type (none\|rain\|storm\|snow)` · `power (0-9)` · `duration?` |
+| `play-audio-runtime` | `action (bgm\|bgs\|se\|me\|stop_bgm\|stop_bgs\|stop_se)` · `name?` · `volume?` · `pitch?` · `pan?` |
+| `get-map-state-runtime` | Lee dimensiones del mapa actual, posición del jugador y clima activo |
+| `control-timer-runtime` | `action (start\|stop\|get)` · `frames?` (requerido para start) |
+| `get-battle-state-runtime` | *(sin entrada requerida — debe estar en batalla)* |
+
+**`control-timer-runtime`** — Inicia, detiene o consulta el temporizador de cuenta regresiva del juego. `action: "get"` devuelve `{ working, seconds }`. `action: "start"` requiere `frames` (60 frames = 1 segundo).
+
+**`get-battle-state-runtime`** — Lee el estado de batalla actual: `{ in_battle, turn, enemies: [{id,name,hp,mhp,mp,alive,states}], party: [{id,name,hp,mhp,mp,alive}] }`.
 
 **Flujo típico:**
 
@@ -926,7 +990,17 @@ Los backups se crean automáticamente antes de cada escritura. `BACKUP_MAX_COUNT
 
 #### Operaciones en lote
 
-`batch-edit` — ejecuta hasta 50 operaciones en una sola llamada MCP. Devuelve resultados individuales. Usa `stop_on_error: true` para detener en el primer error.
+| Herramienta | Campos clave |
+|---|---|
+| `batch-edit` | `operations [{tool, input}]` (máx 50) · `stop_on_error?` |
+| `batch-create-entities` | `entity_type (Actor\|Item\|Weapon\|Armor\|Skill\|Class\|State\|Enemy\|Troop\|CommonEvent\|Animation)` · `entities [array de objetos]` (máx 50) |
+| `batch-delete-entities` | `entity_type` · `entity_ids [array de enteros]` (máx 100) · `confirm: true` |
+
+**`batch-edit`** — Ejecuta hasta 50 operaciones en una sola llamada MCP. Devuelve resultados individuales. Usa `stop_on_error: true` para detener en el primer error.
+
+**`batch-create-entities`** — Crea múltiples entidades del mismo tipo de forma atómica. Cada objeto en `entities` necesita al menos `name`. Devuelve `{ results: [{index, success, id}] }`.
+
+**`batch-delete-entities`** — Anula múltiples entidades en una sola operación. Admite todos los tipos de entidad, incluyendo Animation, Troop, CommonEvent y Tileset. Requiere `confirm: true`. Devuelve resultado por ID.
 
 ```json
 {
