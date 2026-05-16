@@ -1,6 +1,6 @@
-# RPG Maker MCP
+# RPG Maker AI Toolkit — Multi-Platform
 
-**Model Context Protocol server for RPG Maker MZ** — lets any MCP-compatible AI (Claude, GPT, etc.) read and write your game project directly, and control the running game in real time.
+**Model Context Protocol server for RPG Maker MZ · MV · VX Ace · VX · XP** — lets any MCP-compatible AI (Claude, GPT, etc.) read and write your game project directly, and control the running game in real time.
 
 > Available in [English](#english) · [Español](#español)
 
@@ -10,24 +10,30 @@
 
 ### What it does
 
-RPG Maker MCP exposes your RPG Maker MZ project as a set of tools that an AI assistant can call. Instead of describing what you want and then copy-pasting JSON by hand, you just ask the AI and it reads/writes the project files for you — with automatic backups, validation, and a full change log.
+RPG Maker AI Toolkit exposes your RPG Maker project as a set of tools that an AI assistant can call. Instead of describing what you want and then copy-pasting files by hand, you just ask the AI and it reads/writes the project files for you — with automatic backups, validation, and a full change log.
 
-It also includes a **runtime control bridge**: install a lightweight plugin in your game once, and the AI can read game state, flip switches, set variables, teleport the player, and trigger battles while the game is actually running.
+Supports **all major RPG Maker engines**: MZ, MV (JSON-based), and VX Ace, VX, XP (Ruby Marshal format via a built-in bridge).
+
+For MZ/MV it also includes a **runtime control bridge**: install a lightweight plugin in your game once, and the AI can read game state, flip switches, set variables, teleport the player, and trigger battles while the game is actually running.
 
 ### Requirements
 
-| Requirement | Version |
-|---|---|
-| Node.js | 20 + |
-| RPG Maker MZ | any (existing project) |
+| Requirement | Version | Notes |
+|---|---|---|
+| Node.js | 20 + | Required for all engines |
+| RPG Maker MZ or MV | any | JSON format — no extra deps |
+| RPG Maker VX Ace, VX or XP | any | Also requires Ruby (see below) |
+| Ruby | 2.7 + | Required only for VX Ace / VX / XP |
 
 TypeScript is only needed for development; the compiled output runs with plain Node.
+
+> **Ruby note:** For VX Ace (`.rvdata2`), VX (`.rvdata`), and XP (`.rxdata`) projects, a Ruby executable must be on your PATH (or set `RUBY_PATH` in `.env`). Most systems that have these engines installed already have Ruby available via RGSS.
 
 ### Installation
 
 ```bash
-git clone https://github.com/Zagos/RPG-Maker-AI-Toolkit.git
-cd RpgMakerMCP
+git clone https://github.com/Zagos/RPG-Maker-AI-Toolkit-Multi-Platform.git
+cd RPG-Maker-AI-Toolkit-Multi-Platform
 npm install
 npm run build
 ```
@@ -37,16 +43,22 @@ npm run build
 Copy `.env.example` to `.env` and fill in your paths:
 
 ```env
-# Required — absolute path to your RPG Maker MZ project root
+# Required — absolute path to your RPG Maker project root
 RPGMAKER_PROJECT_PATH=C:\Users\you\Documents\MyGame
 
-# Optional — path to the RPG Maker MZ executable (for launch-game tool)
+# Required — engine to use: mz (default) | mv | vxace | vx | xp
+RPGMAKER_ENGINE=mz
+
+# Optional — path to the RPG Maker MZ executable (for launch-game tool, MZ only)
 RPGMAKER_EXECUTABLE_PATH=C:\Program Files\RPG Maker MZ\RPGMakerMZ.exe
+
+# Optional — path to Ruby executable (required for vxace / vx / xp)
+# RUBY_PATH=ruby
 
 # Optional
 MCP_DEBUG=false
 LOG_LEVEL=info          # debug | info | warn | error
-BACKUP_MAX_COUNT=10     # how many backup files to keep per JSON file
+BACKUP_MAX_COUNT=10     # how many backup files to keep per data file
 ```
 
 ### Running
@@ -80,36 +92,45 @@ Add this block to `claude_desktop_config.json`:
 }
 ```
 
+### Engine compatibility
+
+| Engine | Format | `RPGMAKER_ENGINE` | Runtime bridge |
+|---|---|---|---|
+| RPG Maker MZ | JSON | `mz` (default) | ✅ Full |
+| RPG Maker MV | JSON | `mv` | ✅ Full |
+| RPG Maker VX Ace | `.rvdata2` (Marshal) | `vxace` | ❌ File I/O only |
+| RPG Maker VX | `.rvdata` (Marshal) | `vx` | ❌ File I/O only |
+| RPG Maker XP | `.rxdata` (Marshal) | `xp` | ❌ File I/O only |
+
 ### Project Structure
 
 ```
-RpgMakerMCP/
-├── src/
-│   ├── index.ts               # Server entry point, tool registry, HTTP bridge
-│   ├── handlers/              # One file per tool group
-│   │   ├── registry.ts        # TOOL_HANDLERS routing map
-│   │   ├── debug.ts           # Runtime control handlers
-│   │   ├── actor.ts / item.ts / enemy.ts …
-│   │   ├── batch-edit.ts      # Batch dispatcher
-│   │   └── types.ts           # HandlerContext interface
-│   ├── rpgmaker/
-│   │   ├── reader.ts          # JSON read helpers
-│   │   ├── writer.ts          # JSON write + backup + prune
-│   │   ├── validator.ts       # Input validation
-│   │   ├── debug-bridge.ts    # Runtime bridge (commands, ack, game state)
-│   │   ├── change-log.ts      # mcp-changes.json audit log
-│   │   ├── commands.ts        # Event command builders
-│   │   ├── story-manager.ts
-│   │   └── dialogue-manager.ts
-│   ├── templates/
-│   │   └── plugin-template.ts # RPGMakerDebugger plugin generator (v2)
-│   ├── tools/                 # Zod/JSON schema definitions (one per tool)
-│   └── types/                 # RPG Maker MZ TypeScript interfaces
-├── tests/                     # Vitest test suite (357 tests, 20 suites)
-├── scripts/                   # launch-rpgmaker.js helper
-├── skills/                    # Claude Code slash-command skills
-├── .env.example
-└── .github/workflows/ci.yml   # Node 20 + 22 matrix CI
+src/
+├── index.ts                   # Server entry point, tool registry, HTTP bridge
+├── core/
+│   ├── change-log.ts          # mcp-changes.json audit log
+│   └── types/
+│       ├── reader.ts          # IProjectReader interface
+│       └── writer.ts          # IProjectWriter interface
+└── adapters/
+    ├── mz/                    # RPG Maker MZ (JSON)
+    │   ├── reader.ts / writer.ts / validator.ts
+    │   ├── commands.ts / constants.ts / debug-bridge.ts
+    │   ├── handlers/          # ~88 handler files
+    │   └── tools/             # ~88 tool schema files
+    ├── mv/                    # RPG Maker MV (JSON, extends MZ)
+    ├── vxace/                 # RPG Maker VX Ace (.rvdata2)
+    │   ├── reader.ts / writer.ts / normalize.ts
+    ├── vx/                    # RPG Maker VX (.rvdata, extends VXAce)
+    ├── xp/                    # RPG Maker XP (.rxdata, extends VXAce)
+    └── ruby-bridge/
+        ├── bridge.rb          # Ruby Marshal ↔ JSON converter
+        └── index.ts           # Node wrapper (readMarshalFile, writeMarshalFile)
+tests/                         # Vitest test suite (563+ tests, 30 suites)
+scripts/
+├── copy-assets.js             # Copies .rb files to dist/ after tsc build
+└── launch-rpgmaker.js
+.github/workflows/ci.yml       # Node 20+22 × Ruby 3.2 matrix CI
 ```
 
 ### Available Tools
@@ -650,22 +671,28 @@ npm run test:coverage     # with v8 coverage report
 
 ### Qué hace
 
-RPG Maker MCP expone tu proyecto de RPG Maker MZ como un conjunto de herramientas que un asistente IA puede llamar. En lugar de describir lo que quieres y copiar JSON a mano, simplemente pides al agente que lo haga — con backups automáticos, validación y un historial de cambios completo.
+RPG Maker AI Toolkit expone tu proyecto como un conjunto de herramientas que un asistente IA puede llamar. En lugar de describir lo que quieres y copiar archivos a mano, simplemente pides al agente que lo haga — con backups automáticos, validación y un historial de cambios completo.
 
-También incluye un **bridge de control en tiempo real**: instala un plugin ligero en tu juego una vez y el agente puede leer el estado del juego, activar switches, cambiar variables, teleportar al jugador y desencadenar batallas mientras el juego está corriendo.
+Compatible con **todos los engines principales**: MZ, MV (formato JSON) y VX Ace, VX, XP (formato Ruby Marshal con bridge integrado).
+
+Para MZ/MV también incluye un **bridge de control en tiempo real**: instala un plugin ligero en tu juego una vez y el agente puede leer el estado del juego, activar switches, cambiar variables, teleportar al jugador y desencadenar batallas mientras el juego está corriendo.
 
 ### Requisitos
 
-| Requisito | Versión |
-|---|---|
-| Node.js | 20 + |
-| RPG Maker MZ | cualquiera (proyecto existente) |
+| Requisito | Versión | Notas |
+|---|---|---|
+| Node.js | 20 + | Obligatorio para todos los engines |
+| RPG Maker MZ o MV | cualquiera | Formato JSON — sin dependencias extra |
+| RPG Maker VX Ace, VX o XP | cualquiera | Requiere también Ruby (ver abajo) |
+| Ruby | 2.7 + | Solo necesario para VX Ace / VX / XP |
+
+> **Nota Ruby:** Para proyectos VX Ace (`.rvdata2`), VX (`.rvdata`) y XP (`.rxdata`) el ejecutable Ruby debe estar en el PATH (o configurar `RUBY_PATH` en `.env`).
 
 ### Instalación
 
 ```bash
-git clone https://github.com/Zagos/RPG-Maker-AI-Toolkit.git
-cd RpgMakerMCP
+git clone https://github.com/Zagos/RPG-Maker-AI-Toolkit-Multi-Platform.git
+cd RPG-Maker-AI-Toolkit-Multi-Platform
 npm install
 npm run build
 ```
@@ -675,16 +702,22 @@ npm run build
 Copia `.env.example` a `.env`:
 
 ```env
-# Obligatorio — ruta absoluta a la raíz de tu proyecto RPG Maker MZ
+# Obligatorio — ruta absoluta a la raíz de tu proyecto RPG Maker
 RPGMAKER_PROJECT_PATH=C:\Users\tú\Documentos\MiJuego
 
-# Opcional — ruta al ejecutable RPG Maker MZ (para la herramienta launch-game)
+# Obligatorio — engine: mz (por defecto) | mv | vxace | vx | xp
+RPGMAKER_ENGINE=mz
+
+# Opcional — ruta al ejecutable RPG Maker MZ (solo para launch-game, MZ)
 RPGMAKER_EXECUTABLE_PATH=C:\Program Files\RPG Maker MZ\RPGMakerMZ.exe
+
+# Opcional — ruta a Ruby (necesario para vxace / vx / xp)
+# RUBY_PATH=ruby
 
 # Opcional
 MCP_DEBUG=false
 LOG_LEVEL=info
-BACKUP_MAX_COUNT=10     # cuántos backups conservar por archivo JSON
+BACKUP_MAX_COUNT=10     # cuántos backups conservar por archivo de datos
 ```
 
 ### Ejecución

@@ -1,9 +1,17 @@
 {
-  "name": "rpgmaker-mcp",
-  "version": "0.1.0",
-  "description": "MCP server for RPG Maker MZ integration",
+  "name": "rpgmaker-ai-toolkit",
+  "version": "0.2.0",
+  "description": "Multi-platform MCP server for RPG Maker MZ, MV, VX Ace, VX and XP",
   "main": "dist/index.js",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zagos/RPG-Maker-AI-Toolkit-Multi-Platform.git"
+  },
+  "homepage": "https://github.com/Zagos/RPG-Maker-AI-Toolkit-Multi-Platform#readme",
+  "bugs": {
+    "url": "https://github.com/Zagos/RPG-Maker-AI-Toolkit-Multi-Platform/issues"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc && node scripts/copy-assets.js",
@@ -16,8 +24,15 @@
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "rpg-maker",
-    "rpg-maker-mz"
+    "rpg-maker-mz",
+    "rpg-maker-mv",
+    "rpg-maker-vx-ace",
+    "rpg-maker-vx",
+    "rpg-maker-xp",
+    "ai-toolkit",
+    "claude"
   ],
   "author": "Zagos",
   "license": "MIT",

@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci:
-    name: Build, Lint & Test
+    name: Build, Lint & Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -24,6 +24,13 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+
+      # Ruby is required for the VX Ace / VX / XP adapter integration tests
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: false
 
       - name: Install dependencies
         run: npm ci
