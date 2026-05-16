@@ -2,16 +2,16 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { RPGMakerReader } from "../../src/rpgmaker/reader.js";
-import { RPGMakerWriter } from "../../src/rpgmaker/writer.js";
-import { RPGMakerDebugBridge } from "../../src/rpgmaker/debug-bridge.js";
-import { ChangeLog } from "../../src/rpgmaker/change-log.js";
-import { handleExportDialogue } from "../../src/handlers/export-dialogue.js";
-import { handleImportDialogue } from "../../src/handlers/import-dialogue.js";
-import { handleBatchUpdateEntities } from "../../src/handlers/batch-update-entities.js";
-import { handleValidateProject } from "../../src/handlers/validate-project.js";
-import { commandInputToEventCommands } from "../../src/rpgmaker/commands.js";
-import type { HandlerContext } from "../../src/handlers/types.js";
+import { RPGMakerReader } from "../../src/adapters/mz/reader.js";
+import { RPGMakerWriter } from "../../src/adapters/mz/writer.js";
+import { RPGMakerDebugBridge } from "../../src/adapters/mz/debug-bridge.js";
+import { ChangeLog } from "../../src/core/change-log.js";
+import { handleExportDialogue } from "../../src/adapters/mz/handlers/export-dialogue.js";
+import { handleImportDialogue } from "../../src/adapters/mz/handlers/import-dialogue.js";
+import { handleBatchUpdateEntities } from "../../src/adapters/mz/handlers/batch-update-entities.js";
+import { handleValidateProject } from "../../src/adapters/mz/handlers/validate-project.js";
+import { commandInputToEventCommands } from "../../src/adapters/mz/commands.js";
+import type { HandlerContext } from "../../src/adapters/mz/handlers/types.js";
 
 function writeJson(filePath: string, data: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");

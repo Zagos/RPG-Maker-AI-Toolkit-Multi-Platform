@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { StoryManager } from "../../src/rpgmaker/story-manager.js";
-import type { Story } from "../../src/rpgmaker/story-manager.js";
+import { StoryManager } from "../../src/adapters/mz/story-manager.js";
+import type { Story } from "../../src/adapters/mz/story-manager.js";
 
 function buildStory(): Story {
   return {

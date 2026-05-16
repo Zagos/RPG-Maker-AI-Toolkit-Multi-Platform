@@ -6,7 +6,7 @@ import {
   commandInputToEventCommands,
   createDialogueEventCommands,
   defaultEventPage,
-} from "../../src/rpgmaker/commands.js";
+} from "../../src/adapters/mz/commands.js";
 
 describe("textCommands", () => {
   it("genera header 101 + línea 401 para texto corto", () => {

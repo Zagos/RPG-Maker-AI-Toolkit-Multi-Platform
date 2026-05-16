@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { RPGMakerWriter } from "../../src/rpgmaker/writer.js";
+import { RPGMakerWriter } from "../../src/adapters/mz/writer.js";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { RPGMakerReader } from "../../src/rpgmaker/reader.js";
-import { RPGMakerWriter } from "../../src/rpgmaker/writer.js";
-import { RPGMakerDebugBridge } from "../../src/rpgmaker/debug-bridge.js";
-import { ChangeLog } from "../../src/rpgmaker/change-log.js";
-import { handleBatchCreateEntities } from "../../src/handlers/batch-create-entities.js";
-import { handleBatchDeleteEntities } from "../../src/handlers/batch-delete-entities.js";
-import type { HandlerContext } from "../../src/handlers/types.js";
+import { RPGMakerReader } from "../../src/adapters/mz/reader.js";
+import { RPGMakerWriter } from "../../src/adapters/mz/writer.js";
+import { RPGMakerDebugBridge } from "../../src/adapters/mz/debug-bridge.js";
+import { ChangeLog } from "../../src/core/change-log.js";
+import { handleBatchCreateEntities } from "../../src/adapters/mz/handlers/batch-create-entities.js";
+import { handleBatchDeleteEntities } from "../../src/adapters/mz/handlers/batch-delete-entities.js";
+import type { HandlerContext } from "../../src/adapters/mz/handlers/types.js";
 
 function writeJson(filePath: string, data: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");

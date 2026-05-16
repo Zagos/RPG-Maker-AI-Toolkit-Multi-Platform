@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { RPGMakerValidator } from "../rpgmaker/validator.js";
+import { RPGMakerValidator } from "../validator.js";
 import { PluginTemplates } from "../templates/plugin-template.js";
 import type { HandlerContext } from "./types.js";
 

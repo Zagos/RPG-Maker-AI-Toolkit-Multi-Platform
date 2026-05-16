@@ -1,5 +1,5 @@
 import type { HandlerContext } from "./types.js";
-import type { RPGMakerWriter } from "../rpgmaker/writer.js";
+import type { RPGMakerWriter } from "../writer.js";
 
 type UpdaterFn = (writer: RPGMakerWriter, id: number, updates: Record<string, unknown>) => void;
 

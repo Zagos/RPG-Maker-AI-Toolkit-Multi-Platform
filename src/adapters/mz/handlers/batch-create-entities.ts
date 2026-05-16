@@ -1,5 +1,5 @@
 import type { HandlerContext } from "./types.js";
-import type { RPGMakerWriter } from "../rpgmaker/writer.js";
+import type { RPGMakerWriter } from "../writer.js";
 
 const WRITER_MAP: Record<string, (writer: RPGMakerWriter, data: Record<string, unknown>) => number> = {
   Actor: (w, d) => w.addActor(d),

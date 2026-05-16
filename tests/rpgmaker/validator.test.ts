@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RPGMakerValidator } from "../../src/rpgmaker/validator.js";
+import { RPGMakerValidator } from "../../src/adapters/mz/validator.js";
 
 describe("validateActor", () => {
   it("valida actor con campos mínimos", () => {

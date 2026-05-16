@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { HandlerContext } from "./types.js";
-import { RPGMakerValidator } from "../rpgmaker/validator.js";
+import { RPGMakerValidator } from "../validator.js";
 
 type ValidatorFn = (e: Record<string, unknown>) => { valid: boolean; errors: string[]; warnings: string[] };
 

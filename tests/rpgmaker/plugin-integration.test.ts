@@ -13,16 +13,16 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as http from "http";
-import { RPGMakerDebugBridge } from "../../src/rpgmaker/debug-bridge.js";
-import { RPGMakerWriter } from "../../src/rpgmaker/writer.js";
-import { RPGMakerReader } from "../../src/rpgmaker/reader.js";
-import { RPGMakerValidator } from "../../src/rpgmaker/validator.js";
-import { PluginTemplates } from "../../src/templates/plugin-template.js";
-import { ChangeLog } from "../../src/rpgmaker/change-log.js";
+import { RPGMakerDebugBridge } from "../../src/adapters/mz/debug-bridge.js";
+import { RPGMakerWriter } from "../../src/adapters/mz/writer.js";
+import { RPGMakerReader } from "../../src/adapters/mz/reader.js";
+import { RPGMakerValidator } from "../../src/adapters/mz/validator.js";
+import { PluginTemplates } from "../../src/adapters/mz/templates/plugin-template.js";
+import { ChangeLog } from "../../src/core/change-log.js";
 import {
   handleSetupDebugPlugin,
   handleCreatePlugin,
-} from "../../src/handlers/plugin.js";
+} from "../../src/adapters/mz/handlers/plugin.js";
 import {
   handleGetGameState,
   handleSetSwitch,
@@ -33,9 +33,9 @@ import {
   handleLoadGame,
   handleSetPartyState,
   handleRunBattleSuite,
-} from "../../src/handlers/debug.js";
-import type { HandlerContext } from "../../src/handlers/types.js";
-import type { GameState } from "../../src/rpgmaker/debug-bridge.js";
+} from "../../src/adapters/mz/handlers/debug.js";
+import type { HandlerContext } from "../../src/adapters/mz/handlers/types.js";
+import type { GameState } from "../../src/adapters/mz/debug-bridge.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

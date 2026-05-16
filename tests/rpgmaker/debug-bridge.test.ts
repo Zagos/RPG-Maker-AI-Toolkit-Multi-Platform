@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { RPGMakerDebugBridge } from "../../src/rpgmaker/debug-bridge.js";
-import type { GameState, BattleState } from "../../src/rpgmaker/debug-bridge.js";
+import { RPGMakerDebugBridge } from "../../src/adapters/mz/debug-bridge.js";
+import type { GameState, BattleState } from "../../src/adapters/mz/debug-bridge.js";
 
 function makeGameState(overrides?: Partial<GameState>): GameState {
   return {

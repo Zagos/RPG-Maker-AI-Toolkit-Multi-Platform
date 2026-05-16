@@ -1,4 +1,4 @@
-import type { RPGEventCommand, RPGEventPage } from "../types/rpgmaker.js";
+import type { RPGEventCommand, RPGEventPage } from "./types/rpgmaker.js";
 
 export type MapEventCommandInput = {
   type:

@@ -15,7 +15,7 @@ import type {
   RPGState,
   RPGMap,
   RPGDataType,
-} from "../types/rpgmaker.js";
+} from "./types/rpgmaker.js";
 
 export interface ReadOptions {
   projectPath: string;

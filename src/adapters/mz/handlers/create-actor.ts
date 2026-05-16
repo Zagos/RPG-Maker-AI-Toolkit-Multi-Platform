@@ -1,4 +1,4 @@
-import { RPGMakerValidator } from "../rpgmaker/validator.js";
+import { RPGMakerValidator } from "../validator.js";
 import type { HandlerContext } from "./types.js";
 
 export async function handleCreateActor(ctx: HandlerContext): Promise<string> {

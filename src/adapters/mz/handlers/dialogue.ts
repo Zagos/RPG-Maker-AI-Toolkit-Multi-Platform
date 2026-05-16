@@ -1,6 +1,6 @@
 import * as path from "path";
-import { textCommands, createDialogueEventCommands } from "../rpgmaker/commands.js";
-import type { DialogueNodeInput } from "../rpgmaker/commands.js";
+import { textCommands, createDialogueEventCommands } from "../commands.js";
+import type { DialogueNodeInput } from "../commands.js";
 import type { HandlerContext } from "./types.js";
 
 function safeDataName(value: string): string {

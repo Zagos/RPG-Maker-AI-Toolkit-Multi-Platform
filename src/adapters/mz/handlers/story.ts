@@ -1,5 +1,5 @@
 import * as path from "path";
-import { textCommands, commandInputToEventCommands } from "../rpgmaker/commands.js";
+import { textCommands, commandInputToEventCommands } from "../commands.js";
 import type { RPGEventCommand } from "../types/rpgmaker.js";
 import type { HandlerContext } from "./types.js";
 

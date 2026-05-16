@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { DialogueManager } from "../../src/rpgmaker/dialogue-manager.js";
-import type { DialogueTree } from "../../src/rpgmaker/dialogue-manager.js";
+import { DialogueManager } from "../../src/adapters/mz/dialogue-manager.js";
+import type { DialogueTree } from "../../src/adapters/mz/dialogue-manager.js";
 
 function buildTree(): DialogueTree {
   return {

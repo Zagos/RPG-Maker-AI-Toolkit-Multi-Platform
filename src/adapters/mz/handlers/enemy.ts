@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { RPGMakerValidator } from "../rpgmaker/validator.js";
+import { RPGMakerValidator } from "../validator.js";
 import type { HandlerContext } from "./types.js";
 
 export async function handleEditEnemy(ctx: HandlerContext): Promise<string> {

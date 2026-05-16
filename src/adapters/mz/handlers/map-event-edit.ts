@@ -1,7 +1,7 @@
-import { commandInputToEventCommands } from "../rpgmaker/commands.js";
-import type { MapEventCommandInput } from "../rpgmaker/commands.js";
+import { commandInputToEventCommands } from "../commands.js";
+import type { MapEventCommandInput } from "../commands.js";
 import type { RPGMapEvent } from "../types/rpgmaker.js";
-import { RPGMakerValidator } from "../rpgmaker/validator.js";
+import { RPGMakerValidator } from "../validator.js";
 import type { HandlerContext } from "./types.js";
 
 export async function handleEditMapEvent(ctx: HandlerContext): Promise<string> {

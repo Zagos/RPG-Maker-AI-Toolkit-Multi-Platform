@@ -1,5 +1,5 @@
-import { defaultEventPage, commandInputToEventCommands } from "../rpgmaker/commands.js";
-import type { MapEventCommandInput } from "../rpgmaker/commands.js";
+import { defaultEventPage, commandInputToEventCommands } from "../commands.js";
+import type { MapEventCommandInput } from "../commands.js";
 import type { RPGMap, RPGMapEvent } from "../types/rpgmaker.js";
 import type { HandlerContext } from "./types.js";
 

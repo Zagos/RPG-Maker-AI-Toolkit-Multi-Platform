@@ -2,10 +2,10 @@ import {
   textCommands,
   commandInputToEventCommands,
   defaultEventPage,
-} from "../rpgmaker/commands.js";
-import type { MapEventCommandInput } from "../rpgmaker/commands.js";
+} from "../commands.js";
+import type { MapEventCommandInput } from "../commands.js";
 import type { RPGMapEvent } from "../types/rpgmaker.js";
-import { RPGMakerValidator } from "../rpgmaker/validator.js";
+import { RPGMakerValidator } from "../validator.js";
 import type { HandlerContext } from "./types.js";
 
 const MOVE_TYPE_MAP = { fixed: 0, random: 1, approach: 2, custom: 3 } as const;

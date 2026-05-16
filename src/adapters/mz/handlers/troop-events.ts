@@ -1,5 +1,5 @@
-import { commandInputToEventCommands } from "../rpgmaker/commands.js";
-import type { MapEventCommandInput } from "../rpgmaker/commands.js";
+import { commandInputToEventCommands } from "../commands.js";
+import type { MapEventCommandInput } from "../commands.js";
 import type { HandlerContext } from "./types.js";
 
 interface TroopPageInput {

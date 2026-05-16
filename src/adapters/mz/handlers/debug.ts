@@ -2,8 +2,8 @@ import * as fs from "fs";
 import { spawn } from "child_process";
 import type { ChildProcess } from "child_process";
 import type { HandlerContext } from "./types.js";
-import type { RPGMakerWriter } from "../rpgmaker/writer.js";
-import type { EncounterResult, BattleLogEntry } from "../rpgmaker/debug-bridge.js";
+import type { RPGMakerWriter } from "../writer.js";
+import type { EncounterResult, BattleLogEntry } from "../debug-bridge.js";
 
 function notConnected(): string {
   return JSON.stringify({

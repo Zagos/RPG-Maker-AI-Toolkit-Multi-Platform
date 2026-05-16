@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { RPGMakerValidator } from "../../src/rpgmaker/validator.js";
-import { RPGMakerWriter } from "../../src/rpgmaker/writer.js";
+import { RPGMakerValidator } from "../../src/adapters/mz/validator.js";
+import { RPGMakerWriter } from "../../src/adapters/mz/writer.js";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
