@@ -12,6 +12,8 @@ type ZodTypeAny = z.ZodTypeAny;
 // RPG Maker utilities
 import { RPGMakerReader } from "./adapters/mz/reader.js";
 import { RPGMakerWriter } from "./adapters/mz/writer.js";
+import { MVReader } from "./adapters/mv/reader.js";
+import { MVWriter } from "./adapters/mv/writer.js";
 import { RPGMakerDebugBridge } from "./adapters/mz/debug-bridge.js";
 import type { BattleState, GameState } from "./adapters/mz/debug-bridge.js";
 import { ChangeLog } from "./core/change-log.js";
@@ -138,7 +140,7 @@ loadEnvFile();
 
 const RPGMAKER_PROJECT_PATH = process.env.RPGMAKER_PROJECT_PATH;
 const RPGMAKER_ENGINE = (process.env.RPGMAKER_ENGINE || "mz").toLowerCase();
-const SUPPORTED_ENGINES = ["mz"] as const;
+const SUPPORTED_ENGINES = ["mz", "mv"] as const;
 type SupportedEngine = typeof SUPPORTED_ENGINES[number];
 const DEBUG = process.env.MCP_DEBUG === "true";
 const LOG_LEVEL = process.env.LOG_LEVEL || "info";
@@ -374,8 +376,10 @@ async function handleToolCall(toolName: string, toolInput: Record<string, unknow
     return JSON.stringify({ error: `Unknown tool: ${toolName}` });
   }
 
-  const reader = new RPGMakerReader({ projectPath: RPGMAKER_PROJECT_PATH!, debug: DEBUG });
-  const writer = new RPGMakerWriter({ projectPath: RPGMAKER_PROJECT_PATH!, createBackup: true, debug: DEBUG, maxBackups: MAX_BACKUPS });
+  const readerOpts = { projectPath: RPGMAKER_PROJECT_PATH!, debug: DEBUG };
+  const writerOpts = { projectPath: RPGMAKER_PROJECT_PATH!, createBackup: true, debug: DEBUG, maxBackups: MAX_BACKUPS };
+  const reader = RPGMAKER_ENGINE === "mv" ? new MVReader(readerOpts) : new RPGMakerReader(readerOpts);
+  const writer = RPGMAKER_ENGINE === "mv" ? new MVWriter(writerOpts) : new RPGMakerWriter(writerOpts);
   changeLog ??= new ChangeLog(RPGMAKER_PROJECT_PATH!);
 
   const ctx: HandlerContext = {
