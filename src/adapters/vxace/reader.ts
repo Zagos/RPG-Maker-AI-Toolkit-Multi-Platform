@@ -23,6 +23,7 @@ export interface VXAceReaderOptions {
 }
 
 export class VXAceReader implements IProjectReader {
+  protected ext = ".rvdata2";
   protected projectPath: string;
   protected dataPath: string;
   protected debug: boolean;
@@ -61,7 +62,7 @@ export class VXAceReader implements IProjectReader {
 
   // For MapInfos which is a Hash {id: mapInfo}
   private readMapInfosHash(): Array<Record<string, unknown> | null> {
-    const raw = this.readFile("MapInfos.rvdata2") as Record<string, unknown>;
+    const raw = this.readFile(`MapInfos${this.ext}`) as Record<string, unknown>;
     // Ruby Hash keys become string numbers: "1", "2", etc.
     const maxId = Math.max(0, ...Object.keys(raw).map(Number));
     const result: Array<Record<string, unknown> | null> = new Array(maxId + 1).fill(null);
@@ -72,40 +73,40 @@ export class VXAceReader implements IProjectReader {
     return result;
   }
 
-  readActors(): RPGActor[] { return this.readArray<RPGActor>("Actors.rvdata2"); }
+  readActors(): RPGActor[] { return this.readArray<RPGActor>(`Actors${this.ext}`); }
   readActor(id: number): RPGActor | null { return this.readActors().find((a) => a.id === id) ?? null; }
 
-  readEnemies(): RPGEnemy[] { return this.readArray<RPGEnemy>("Enemies.rvdata2"); }
+  readEnemies(): RPGEnemy[] { return this.readArray<RPGEnemy>(`Enemies${this.ext}`); }
   readEnemy(id: number): RPGEnemy | null { return this.readEnemies().find((e) => e.id === id) ?? null; }
 
-  readItems(): RPGItem[] { return this.readArray<RPGItem>("Items.rvdata2"); }
+  readItems(): RPGItem[] { return this.readArray<RPGItem>(`Items${this.ext}`); }
   readItem(id: number): RPGItem | null { return this.readItems().find((i) => i.id === id) ?? null; }
 
-  readWeapons(): RPGWeapon[] { return this.readArray<RPGWeapon>("Weapons.rvdata2"); }
+  readWeapons(): RPGWeapon[] { return this.readArray<RPGWeapon>(`Weapons${this.ext}`); }
   readWeapon(id: number): RPGWeapon | null { return this.readWeapons().find((w) => w.id === id) ?? null; }
 
-  readArmors(): RPGArmor[] { return this.readArray<RPGArmor>("Armors.rvdata2"); }
+  readArmors(): RPGArmor[] { return this.readArray<RPGArmor>(`Armors${this.ext}`); }
   readArmor(id: number): RPGArmor | null { return this.readArmors().find((a) => a.id === id) ?? null; }
 
-  readClasses(): RPGClass[] { return this.readArray<RPGClass>("Classes.rvdata2"); }
+  readClasses(): RPGClass[] { return this.readArray<RPGClass>(`Classes${this.ext}`); }
   readClass(id: number): RPGClass | null { return this.readClasses().find((c) => c.id === id) ?? null; }
 
-  readSkills(): RPGSkill[] { return this.readArray<RPGSkill>("Skills.rvdata2"); }
+  readSkills(): RPGSkill[] { return this.readArray<RPGSkill>(`Skills${this.ext}`); }
   readSkill(id: number): RPGSkill | null { return this.readSkills().find((s) => s.id === id) ?? null; }
 
-  readStates(): RPGState[] { return this.readArray<RPGState>("States.rvdata2"); }
+  readStates(): RPGState[] { return this.readArray<RPGState>(`States${this.ext}`); }
   readState(id: number): RPGState | null { return this.readStates().find((s) => s.id === id) ?? null; }
 
-  readTroops(): Array<Record<string, unknown>> { return this.readArray<Record<string, unknown>>("Troops.rvdata2"); }
+  readTroops(): Array<Record<string, unknown>> { return this.readArray<Record<string, unknown>>(`Troops${this.ext}`); }
   readTroop(id: number): Record<string, unknown> | null { return this.readTroops().find((t) => t["id"] === id) ?? null; }
 
-  readCommonEvents(): Array<Record<string, unknown>> { return this.readArray<Record<string, unknown>>("CommonEvents.rvdata2"); }
+  readCommonEvents(): Array<Record<string, unknown>> { return this.readArray<Record<string, unknown>>(`CommonEvents${this.ext}`); }
   readCommonEvent(id: number): Record<string, unknown> | null { return this.readCommonEvents().find((e) => e["id"] === id) ?? null; }
 
-  readTilesets(): Array<Record<string, unknown>> { return this.readArray<Record<string, unknown>>("Tilesets.rvdata2"); }
+  readTilesets(): Array<Record<string, unknown>> { return this.readArray<Record<string, unknown>>(`Tilesets${this.ext}`); }
   readTileset(id: number): Record<string, unknown> | null { return this.readTilesets().find((t) => t["id"] === id) ?? null; }
 
-  readAnimations(): unknown[] { return this.readArray<unknown>("Animations.rvdata2"); }
+  readAnimations(): unknown[] { return this.readArray<unknown>(`Animations${this.ext}`); }
   readAnimation(id: number): unknown {
     return (
       this.readAnimations().find(
@@ -115,12 +116,12 @@ export class VXAceReader implements IProjectReader {
   }
 
   readMap(id: number): RPGMap | null {
-    const filename = `Map${String(id).padStart(3, "0")}.rvdata2`;
+    const filename = `Map${String(id).padStart(3, "0")}${this.ext}`;
     try { return this.readFile(filename) as RPGMap; } catch { return null; }
   }
 
   readProjectConfig(): Record<string, unknown> {
-    try { return this.readFile("System.rvdata2") as Record<string, unknown>; } catch { return {}; }
+    try { return this.readFile(`System${this.ext}`) as Record<string, unknown>; } catch { return {}; }
   }
 
   readMapInfos(): Array<Record<string, unknown> | null> {

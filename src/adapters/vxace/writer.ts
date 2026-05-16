@@ -13,6 +13,7 @@ export interface VXAceWriterOptions {
 }
 
 export class VXAceWriter implements IProjectWriter {
+  protected ext = ".rvdata2";
   protected projectPath: string;
   protected dataPath: string;
   protected backupPath: string;
@@ -48,7 +49,7 @@ export class VXAceWriter implements IProjectWriter {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const unique = Math.floor(Math.random() * 9000 + 1000).toString();
       const base = filename.replace(/\.[^.]+$/, "");
-      const dst = path.join(this.backupPath, `${base}_${timestamp}_${unique}.rvdata2`);
+      const dst = path.join(this.backupPath, `${base}_${timestamp}_${unique}${this.ext}`);
       fs.copyFileSync(src, dst);
       this.pruneBackups(filename, this.maxBackups);
     } catch (e) {
@@ -103,56 +104,56 @@ export class VXAceWriter implements IProjectWriter {
     return newId;
   }
 
-  updateActor(id: number, updates: Record<string, unknown>): void { this.updateInArray("Actors.rvdata2", id, updates, "Actor"); }
-  addActor(data: Record<string, unknown>): number { return this.addToArray("Actors.rvdata2", data); }
+  updateActor(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Actors${this.ext}`, id, updates, "Actor"); }
+  addActor(data: Record<string, unknown>): number { return this.addToArray(`Actors${this.ext}`, data); }
 
-  updateItem(id: number, updates: Record<string, unknown>): void { this.updateInArray("Items.rvdata2", id, updates, "Item"); }
-  addItem(data: Record<string, unknown>): number { return this.addToArray("Items.rvdata2", data); }
+  updateItem(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Items${this.ext}`, id, updates, "Item"); }
+  addItem(data: Record<string, unknown>): number { return this.addToArray(`Items${this.ext}`, data); }
 
-  updateEnemy(id: number, updates: Record<string, unknown>): void { this.updateInArray("Enemies.rvdata2", id, updates, "Enemy"); }
-  addEnemy(data: Record<string, unknown>): number { return this.addToArray("Enemies.rvdata2", data); }
+  updateEnemy(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Enemies${this.ext}`, id, updates, "Enemy"); }
+  addEnemy(data: Record<string, unknown>): number { return this.addToArray(`Enemies${this.ext}`, data); }
 
-  updateWeapon(id: number, updates: Record<string, unknown>): void { this.updateInArray("Weapons.rvdata2", id, updates, "Weapon"); }
-  addWeapon(data: Record<string, unknown>): number { return this.addToArray("Weapons.rvdata2", data); }
+  updateWeapon(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Weapons${this.ext}`, id, updates, "Weapon"); }
+  addWeapon(data: Record<string, unknown>): number { return this.addToArray(`Weapons${this.ext}`, data); }
 
-  updateArmor(id: number, updates: Record<string, unknown>): void { this.updateInArray("Armors.rvdata2", id, updates, "Armor"); }
-  addArmor(data: Record<string, unknown>): number { return this.addToArray("Armors.rvdata2", data); }
+  updateArmor(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Armors${this.ext}`, id, updates, "Armor"); }
+  addArmor(data: Record<string, unknown>): number { return this.addToArray(`Armors${this.ext}`, data); }
 
-  updateSkill(id: number, updates: Record<string, unknown>): void { this.updateInArray("Skills.rvdata2", id, updates, "Skill"); }
-  addSkill(data: Record<string, unknown>): number { return this.addToArray("Skills.rvdata2", data); }
+  updateSkill(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Skills${this.ext}`, id, updates, "Skill"); }
+  addSkill(data: Record<string, unknown>): number { return this.addToArray(`Skills${this.ext}`, data); }
 
-  updateClass(id: number, updates: Record<string, unknown>): void { this.updateInArray("Classes.rvdata2", id, updates, "Class"); }
-  addClass(data: Record<string, unknown>): number { return this.addToArray("Classes.rvdata2", data); }
+  updateClass(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Classes${this.ext}`, id, updates, "Class"); }
+  addClass(data: Record<string, unknown>): number { return this.addToArray(`Classes${this.ext}`, data); }
 
-  updateState(id: number, updates: Record<string, unknown>): void { this.updateInArray("States.rvdata2", id, updates, "State"); }
-  addState(data: Record<string, unknown>): number { return this.addToArray("States.rvdata2", data); }
+  updateState(id: number, updates: Record<string, unknown>): void { this.updateInArray(`States${this.ext}`, id, updates, "State"); }
+  addState(data: Record<string, unknown>): number { return this.addToArray(`States${this.ext}`, data); }
 
-  updateCommonEvent(id: number, updates: Record<string, unknown>): void { this.updateInArray("CommonEvents.rvdata2", id, updates, "CommonEvent"); }
-  addCommonEvent(data: Record<string, unknown>): number { return this.addToArray("CommonEvents.rvdata2", data); }
+  updateCommonEvent(id: number, updates: Record<string, unknown>): void { this.updateInArray(`CommonEvents${this.ext}`, id, updates, "CommonEvent"); }
+  addCommonEvent(data: Record<string, unknown>): number { return this.addToArray(`CommonEvents${this.ext}`, data); }
 
-  updateTroop(id: number, updates: Record<string, unknown>): void { this.updateInArray("Troops.rvdata2", id, updates, "Troop"); }
-  addTroop(data: Record<string, unknown>): number { return this.addToArray("Troops.rvdata2", data); }
+  updateTroop(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Troops${this.ext}`, id, updates, "Troop"); }
+  addTroop(data: Record<string, unknown>): number { return this.addToArray(`Troops${this.ext}`, data); }
 
-  updateAnimation(id: number, updates: Record<string, unknown>): void { this.updateInArray("Animations.rvdata2", id, updates, "Animation"); }
-  addAnimation(data: Record<string, unknown>): number { return this.addToArray("Animations.rvdata2", data); }
+  updateAnimation(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Animations${this.ext}`, id, updates, "Animation"); }
+  addAnimation(data: Record<string, unknown>): number { return this.addToArray(`Animations${this.ext}`, data); }
 
-  updateTileset(id: number, updates: Record<string, unknown>): void { this.updateInArray("Tilesets.rvdata2", id, updates, "Tileset"); }
-  addTileset(data: Record<string, unknown>): number { return this.addToArray("Tilesets.rvdata2", data); }
+  updateTileset(id: number, updates: Record<string, unknown>): void { this.updateInArray(`Tilesets${this.ext}`, id, updates, "Tileset"); }
+  addTileset(data: Record<string, unknown>): number { return this.addToArray(`Tilesets${this.ext}`, data); }
 
   writeMap(mapId: number, mapData: unknown, _mapInfo?: unknown): void {
-    const filename = `Map${String(mapId).padStart(3, "0")}.rvdata2`;
+    const filename = `Map${String(mapId).padStart(3, "0")}${this.ext}`;
     this.backupFile(filename);
     writeMarshalFile(path.join(this.dataPath, filename), denormalizeKeys(mapData), this.bridgeOpts);
   }
 
   deleteMap(mapId: number): void {
-    const filename = `Map${String(mapId).padStart(3, "0")}.rvdata2`;
+    const filename = `Map${String(mapId).padStart(3, "0")}${this.ext}`;
     const filePath = path.join(this.dataPath, filename);
     if (!fs.existsSync(filePath)) throw new Error(`Map file not found: ${filename}`);
     this.backupFile(filename);
     fs.unlinkSync(filePath);
     // Update MapInfos
-    const mapInfosPath = path.join(this.dataPath, "MapInfos.rvdata2");
+    const mapInfosPath = path.join(this.dataPath, `MapInfos${this.ext}`);
     if (fs.existsSync(mapInfosPath)) {
       try {
         const raw = readMarshalFile(mapInfosPath, this.bridgeOpts) as Record<string, unknown>;
@@ -163,18 +164,18 @@ export class VXAceWriter implements IProjectWriter {
   }
 
   writeDataFile(filename: string, data: unknown, createBackup = true): void {
-    if (!filename.endsWith(".rvdata2")) throw new Error("VX Ace data files must have .rvdata2 extension");
+    if (!filename.endsWith(this.ext)) throw new Error(`VX Ace data files must have ${this.ext} extension`);
     if (createBackup) this.backupFile(filename);
     writeMarshalFile(path.join(this.dataPath, filename), denormalizeKeys(data), this.bridgeOpts);
   }
 
   refreshVersionId(): void {
-    const systemPath = path.join(this.dataPath, "System.rvdata2");
+    const systemPath = path.join(this.dataPath, `System${this.ext}`);
     if (!fs.existsSync(systemPath)) return;
     try {
       const data = readMarshalFile(systemPath, this.bridgeOpts) as Record<string, unknown>;
       data["version_id"] = Math.floor(Math.random() * 1_000_000_000);
-      this.backupFile("System.rvdata2");
+      this.backupFile(`System${this.ext}`);
       writeMarshalFile(systemPath, data, this.bridgeOpts);
     } catch { /* best-effort */ }
   }
@@ -214,7 +215,7 @@ export class VXAceWriter implements IProjectWriter {
     }
     const src = path.join(this.backupPath, backupFilename);
     if (!fs.existsSync(src)) throw new Error(`Backup not found: ${backupFilename}`);
-    const originalName = backupFilename.split("_")[0] + ".rvdata2";
+    const originalName = backupFilename.split("_")[0] + this.ext;
     fs.copyFileSync(src, path.join(this.dataPath, originalName));
   }
 

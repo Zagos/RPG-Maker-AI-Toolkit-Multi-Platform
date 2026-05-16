@@ -16,6 +16,10 @@ import { MVReader } from "./adapters/mv/reader.js";
 import { MVWriter } from "./adapters/mv/writer.js";
 import { VXAceReader } from "./adapters/vxace/reader.js";
 import { VXAceWriter } from "./adapters/vxace/writer.js";
+import { VXReader } from "./adapters/vx/reader.js";
+import { VXWriter } from "./adapters/vx/writer.js";
+import { XPReader } from "./adapters/xp/reader.js";
+import { XPWriter } from "./adapters/xp/writer.js";
 import { RPGMakerDebugBridge } from "./adapters/mz/debug-bridge.js";
 import type { BattleState, GameState } from "./adapters/mz/debug-bridge.js";
 import { ChangeLog } from "./core/change-log.js";
@@ -142,7 +146,7 @@ loadEnvFile();
 
 const RPGMAKER_PROJECT_PATH = process.env.RPGMAKER_PROJECT_PATH;
 const RPGMAKER_ENGINE = (process.env.RPGMAKER_ENGINE || "mz").toLowerCase();
-const SUPPORTED_ENGINES = ["mz", "mv", "vxace"] as const;
+const SUPPORTED_ENGINES = ["mz", "mv", "vxace", "vx", "xp"] as const;
 type SupportedEngine = typeof SUPPORTED_ENGINES[number];
 const DEBUG = process.env.MCP_DEBUG === "true";
 const LOG_LEVEL = process.env.LOG_LEVEL || "info";
@@ -385,6 +389,12 @@ async function handleToolCall(toolName: string, toolInput: Record<string, unknow
   if (RPGMAKER_ENGINE === "vxace") {
     reader = new VXAceReader(readerOpts);
     writer = new VXAceWriter(writerOpts);
+  } else if (RPGMAKER_ENGINE === "vx") {
+    reader = new VXReader(readerOpts);
+    writer = new VXWriter(writerOpts);
+  } else if (RPGMAKER_ENGINE === "xp") {
+    reader = new XPReader(readerOpts);
+    writer = new XPWriter(writerOpts);
   } else if (RPGMAKER_ENGINE === "mv") {
     reader = new MVReader(readerOpts);
     writer = new MVWriter(writerOpts);
