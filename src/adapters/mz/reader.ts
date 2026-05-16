@@ -16,13 +16,14 @@ import type {
   RPGMap,
   RPGDataType,
 } from "./types/rpgmaker.js";
+import type { IProjectReader } from "../../core/types/reader.js";
 
 export interface ReadOptions {
   projectPath: string;
   debug?: boolean;
 }
 
-export class RPGMakerReader {
+export class RPGMakerReader implements IProjectReader {
   private projectPath: string;
   private dataPath: string;
   private debug: boolean;

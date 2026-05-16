@@ -1,7 +1,7 @@
 import type { HandlerContext } from "./types.js";
-import type { RPGMakerWriter } from "../writer.js";
+import type { IProjectWriter } from "../../../core/types/writer.js";
 
-type UpdaterFn = (writer: RPGMakerWriter, id: number, updates: Record<string, unknown>) => void;
+type UpdaterFn = (writer: IProjectWriter, id: number, updates: Record<string, unknown>) => void;
 
 const UPDATER_MAP: Record<string, UpdaterFn> = {
   Actor: (w, id, u) => w.updateActor(id, u),

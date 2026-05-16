@@ -2,7 +2,7 @@ import * as fs from "fs";
 import { spawn } from "child_process";
 import type { ChildProcess } from "child_process";
 import type { HandlerContext } from "./types.js";
-import type { RPGMakerWriter } from "../writer.js";
+import type { IProjectWriter } from "../../../core/types/writer.js";
 import type { EncounterResult, BattleLogEntry } from "../debug-bridge.js";
 
 function notConnected(): string {
@@ -11,7 +11,7 @@ function notConnected(): string {
   });
 }
 
-function createTempTroop(writer: RPGMakerWriter, projectPath: string, enemyId: number, count: number): number {
+function createTempTroop(writer: IProjectWriter, projectPath: string, enemyId: number, count: number): number {
   const troopsPath = `${projectPath}/data/Troops.json`;
   const troops = JSON.parse(fs.readFileSync(troopsPath, "utf-8")) as Array<Record<string, unknown> | null>;
 

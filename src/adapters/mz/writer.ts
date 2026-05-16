@@ -4,6 +4,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import type { IProjectWriter } from "../../core/types/writer.js";
 
 export interface WriteOptions {
   projectPath: string;
@@ -25,7 +26,7 @@ function isDatabaseEntry(value: unknown): value is RPGDatabaseEntry {
   );
 }
 
-export class RPGMakerWriter {
+export class RPGMakerWriter implements IProjectWriter {
   private projectPath: string;
   private dataPath: string;
   private backupPath: string;
