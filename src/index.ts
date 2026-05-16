@@ -109,6 +109,9 @@ import { CleanupProjectTool } from "./tools/cleanup-project.js";
 import { ControlTimerRuntimeTool } from "./tools/control-timer-runtime.js";
 import { GetBattleStateRuntimeTool } from "./tools/get-battle-state-runtime.js";
 import { ReorderPluginTool } from "./tools/reorder-plugin.js";
+import { ExportDialogueTool } from "./tools/export-dialogue.js";
+import { ImportDialogueTool } from "./tools/import-dialogue.js";
+import { BatchUpdateEntitiesTool } from "./tools/batch-update-entities.js";
 
 // Handlers
 import type { HandlerContext } from "./handlers/types.js";
@@ -330,6 +333,9 @@ const tools: Tool[] = [
   ControlTimerRuntimeTool,
   GetBattleStateRuntimeTool,
   ReorderPluginTool,
+  ExportDialogueTool,
+  ImportDialogueTool,
+  BatchUpdateEntitiesTool,
   {
     name: "get-change-history",
     description: "Read the MCP change log. Returns a newest-first list of all tool calls that modified RPG Maker project data.",

@@ -76,6 +76,9 @@ import { handleCleanupProject } from "./cleanup-project.js";
 import { handleControlTimerRuntime } from "./control-timer-runtime.js";
 import { handleGetBattleStateRuntime } from "./get-battle-state-runtime.js";
 import { handleReorderPlugin } from "./reorder-plugin.js";
+import { handleExportDialogue } from "./export-dialogue.js";
+import { handleImportDialogue } from "./import-dialogue.js";
+import { handleBatchUpdateEntities } from "./batch-update-entities.js";
 
 // All tool handlers except batch-edit (to avoid circular imports)
 export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
@@ -180,4 +183,7 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "control-timer-runtime": handleControlTimerRuntime,
   "get-battle-state-runtime": handleGetBattleStateRuntime,
   "reorder-plugin": handleReorderPlugin,
+  "export-dialogue": handleExportDialogue,
+  "import-dialogue": handleImportDialogue,
+  "batch-update-entities": handleBatchUpdateEntities,
 };
