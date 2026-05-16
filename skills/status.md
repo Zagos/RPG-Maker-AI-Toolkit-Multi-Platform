@@ -1,6 +1,6 @@
 # /status
 
-Show the current state of the RPG Maker MCP project.
+Show the current state of the RPG Maker AI Toolkit project.
 
 ## Steps
 
@@ -9,7 +9,7 @@ Show the current state of the RPG Maker MCP project.
 2. Run `npm test 2>&1` and report: N tests passing / failing across M suites.
 
 3. Count registered tools:
-   - Count entries in `src/handlers/registry.ts` TOOL_HANDLERS map
+   - Count entries in `src/adapters/mz/handlers/registry.ts` TOOL_HANDLERS map
    - Add 1 for `batch-edit` (registered separately in index.ts)
    - Report total
 

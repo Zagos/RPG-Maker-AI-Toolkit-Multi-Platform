@@ -11,24 +11,25 @@ Scaffold a complete new MCP tool end-to-end following the project conventions.
    - What entity or action it targets
    - Whether it reads, writes, or both
 
-3. **Create the schema** at `src/tools/<tool-name>.ts`:
+3. **Create the schema** at `src/adapters/mz/tools/<tool-name>.ts`:
    - Export a const named `<PascalCase>Tool`
    - Use the JSON Schema object format (matching existing tools)
    - Mark `_id` fields optional to support create + update in one tool
 
-4. **Create the handler** at `src/handlers/<tool-name>.ts`:
+4. **Create the handler** at `src/adapters/mz/handlers/<tool-name>.ts`:
    - Export `async function handle<PascalCase>(ctx: HandlerContext): Promise<string>`
    - Read inputs from `ctx.input` with explicit casts
+   - Type `ctx.reader` as `IProjectReader`, `ctx.writer` as `IProjectWriter` — never as the concrete MZ classes
    - Validate with `RPGMakerValidator` where applicable
    - Wrap in try/catch — always return `JSON.stringify(…)`, never throw
    - Call `ctx.changeLog.append(…)` after every successful write
    - Follow the create-vs-update pattern: check if `_id` is present
 
 5. **Add writer methods** if `RPGMakerWriter` is missing `update<Entity>` / `add<Entity>`:
-   - Follow the existing pattern in `src/rpgmaker/writer.ts`
+   - Follow the existing pattern in `src/adapters/mz/writer.ts`
    - Use `readDatabaseArray` + `findIndex` + `writeJsonFile`
 
-6. **Register** in `src/handlers/registry.ts`:
+6. **Register** in `src/adapters/mz/handlers/registry.ts`:
    - Import the handler
    - Add `"<tool-name>": handle<PascalCase>` to `TOOL_HANDLERS`
 
@@ -74,3 +75,11 @@ const result = (state as unknown as Record<string, unknown>).queryResult;
 ```
 
 `waitForGameState` must be started **before** `setCommand` — it nulls `gameState` synchronously, then polls every 200 ms. Calling it after risks missing the response.
+
+Runtime tools only work on MZ/MV. If the engine is VX Ace/VX/XP, return an error JSON immediately:
+
+```typescript
+if (!["mz", "mv"].includes(process.env.RPGMAKER_ENGINE ?? "mz")) {
+  return JSON.stringify({ error: "Runtime tools are only available for RPG Maker MZ/MV." });
+}
+```
