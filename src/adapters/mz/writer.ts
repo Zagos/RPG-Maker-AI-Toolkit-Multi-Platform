@@ -701,6 +701,10 @@ export class RPGMakerWriter implements IProjectWriter {
     }
   }
 
+  writeSystemConfig(data: Record<string, unknown>): void {
+    this.writeDataFile("System.json", data);
+  }
+
   /**
    * Refresh System.json versionId to force editor refresh
    */

@@ -370,6 +370,42 @@ const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = 
   "batch-edit": handleBatchEdit,
 };
 
+// Tools that require RPG Maker MZ or MV and must not run on Ruby engines (VX Ace / VX / XP).
+// Grouped by reason:
+//   runtime  — need the NW.js HTTP debug bridge (no equivalent in Ruby engines)
+//   plugins  — JS plugin system doesn't exist in Ruby engines
+//   mz-fmt   — write MZ-specific event command codes or data structures that differ in Ruby engines
+const RUBY_UNSUPPORTED_TOOLS = new Set<string>([
+  // runtime bridge
+  "launch-game", "setup-debug-plugin", "get-game-state",
+  "set-switch", "get-switch", "set-variable", "get-variable",
+  "get-inventory", "modify-inventory", "call-common-event",
+  "modify-actor-runtime", "get-actor-runtime", "manage-party-runtime",
+  "control-weather-runtime", "play-audio-runtime", "get-map-state-runtime",
+  "get-battle-state-runtime", "control-timer-runtime", "execute-script",
+  "show-message", "teleport-player", "save-game", "load-game",
+  "set-party-state", "start-encounter", "run-battle-suite",
+  // plugins
+  "create-plugin", "create-plugin-advanced", "manage-plugins",
+  "edit-plugin-parameters", "reorder-plugin",
+  // mz-specific data structures
+  "validate-project",
+]);
+
+const RUBY_ENGINE_NAMES: Record<string, string> = {
+  vxace: "VX Ace",
+  vx: "VX",
+  xp: "XP",
+};
+
+// Event command tools work on Ruby engines (codes are identical to MZ/MV for core commands),
+// but some parameters differ in edge cases. Append a warning to successful responses.
+const RUBY_EVENT_CMD_TOOLS = new Set<string>([
+  "create-map-event", "edit-map-event", "edit-event-page",
+  "add-dialogue", "create-dialogue-advanced", "import-dialogue",
+  "export-dialogue", "story-generator", "edit-troop-events",
+]);
+
 const debugBridge = new RPGMakerDebugBridge();
 // changeLog is a singleton so all tool calls share the same log file
 let changeLog: ChangeLog;
@@ -380,6 +416,13 @@ async function handleToolCall(toolName: string, toolInput: Record<string, unknow
   const handler = TOOL_HANDLERS[toolName];
   if (!handler) {
     return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+  }
+
+  if (RPGMAKER_ENGINE in RUBY_ENGINE_NAMES && RUBY_UNSUPPORTED_TOOLS.has(toolName)) {
+    const engineLabel = RUBY_ENGINE_NAMES[RPGMAKER_ENGINE];
+    return JSON.stringify({
+      error: `Tool '${toolName}' is not available for RPG Maker ${engineLabel}. This tool requires RPG Maker MZ or MV.`,
+    });
   }
 
   const readerOpts = { projectPath: RPGMAKER_PROJECT_PATH!, debug: DEBUG };
@@ -415,7 +458,18 @@ async function handleToolCall(toolName: string, toolInput: Record<string, unknow
   };
 
   try {
-    return await handler(ctx);
+    let result = await handler(ctx);
+    if (RPGMAKER_ENGINE in RUBY_ENGINE_NAMES && RUBY_EVENT_CMD_TOOLS.has(toolName)) {
+      try {
+        const parsed = JSON.parse(result) as Record<string, unknown>;
+        if (!parsed.error) {
+          const engineLabel = RUBY_ENGINE_NAMES[RPGMAKER_ENGINE];
+          parsed._engine_note = `Event command codes are compatible with RPG Maker ${engineLabel}. Note: show-picture has fewer parameters than MZ; animation IDs reference the classic frame-based format, not Effekseer.`;
+          result = JSON.stringify(parsed);
+        }
+      } catch { /* leave result unchanged if not valid JSON */ }
+    }
+    return result;
   } catch (error) {
     logger.error("Tool execution error", error);
     return JSON.stringify({ error: (error as Error).message });
