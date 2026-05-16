@@ -499,6 +499,22 @@ export class RPGMakerWriter {
     return newId;
   }
 
+  updateAnimation(animationId: number, updates: Record<string, unknown>): void {
+    const animations = this.readDatabaseArray("Animations.json");
+    const idx = animations.findIndex((a) => isDatabaseEntry(a) && a.id === animationId);
+    if (idx === -1) throw new Error(`Animation with ID ${animationId} not found`);
+    animations[idx] = { ...(animations[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("Animations.json", animations);
+  }
+
+  updateTileset(tilesetId: number, updates: Record<string, unknown>): void {
+    const tilesets = this.readDatabaseArray("Tilesets.json");
+    const idx = tilesets.findIndex((t) => isDatabaseEntry(t) && t.id === tilesetId);
+    if (idx === -1) throw new Error(`Tileset with ID ${tilesetId} not found`);
+    tilesets[idx] = { ...(tilesets[idx] as Record<string, unknown>), ...updates };
+    this.writeJsonFile("Tilesets.json", tilesets);
+  }
+
   /**
    * Obtiene la lista de archivos de backup
    */

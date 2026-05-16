@@ -12,6 +12,8 @@ const UPDATER_MAP: Record<string, UpdaterFn> = {
   Class: (w, id, u) => w.updateClass(id, u),
   State: (w, id, u) => w.updateState(id, u),
   Enemy: (w, id, u) => w.updateEnemy(id, u),
+  Troop: (w, id, u) => w.updateTroop(id, u),
+  CommonEvent: (w, id, u) => w.updateCommonEvent(id, u),
 };
 
 export async function handleBatchUpdateEntities(ctx: HandlerContext): Promise<string> {

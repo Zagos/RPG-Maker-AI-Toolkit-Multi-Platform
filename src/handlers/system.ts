@@ -137,6 +137,13 @@ export async function handleEditSystem(ctx: HandlerContext): Promise<string> {
       updated.push("terms_messages");
     }
 
+    if (input.opt_autosave !== undefined) { system.optAutosave = Boolean(input.opt_autosave); updated.push("opt_autosave"); }
+    if (input.opt_display_tp !== undefined) { system.optDisplayTp = Boolean(input.opt_display_tp); updated.push("opt_display_tp"); }
+    if (input.opt_slip_death !== undefined) { system.optSlipDeath = Boolean(input.opt_slip_death); updated.push("opt_slip_death"); }
+    if (input.opt_floor_death !== undefined) { system.optFloorDeath = Boolean(input.opt_floor_death); updated.push("opt_floor_death"); }
+    if (input.opt_follower_distance !== undefined) { system.optFollowerDistance = Boolean(input.opt_follower_distance); updated.push("opt_follower_distance"); }
+    if (input.opt_transparent !== undefined) { system.optTransparent = Boolean(input.opt_transparent); updated.push("opt_transparent"); }
+
     if (updated.length === 0) {
       return JSON.stringify({ error: "No fields to update. Provide at least one property." });
     }

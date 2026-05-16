@@ -8,7 +8,7 @@ export const BatchUpdateEntitiesTool: Tool = {
     properties: {
       entity_type: {
         type: "string",
-        enum: ["Actor", "Item", "Weapon", "Armor", "Skill", "Class", "State", "Enemy"],
+        enum: ["Actor", "Item", "Weapon", "Armor", "Skill", "Class", "State", "Enemy", "Troop", "CommonEvent"],
         description: "Type of entity to update",
       },
       entity_ids: {
@@ -20,7 +20,7 @@ export const BatchUpdateEntitiesTool: Tool = {
       },
       updates: {
         type: "object",
-        description: "Fields to update on each entity. Use the same field names as the corresponding edit-* tool.",
+        description: "Fields to update on the entity. Mirror the corresponding edit-* tool inputs. Examples: name, note, hp, mp, exp, gold (for enemies); price, itype_id (for items).",
       },
       confirm: {
         type: "boolean",
