@@ -48,6 +48,14 @@ export async function handleFindAndReplace(ctx: HandlerContext): Promise<string>
           const [newVal, count] = countReplace(entry.note, find, replace);
           if (count > 0) { entry.note = newVal; totalReplacements += count; fileChanged = true; }
         }
+        if (doNotes && typeof entry.nickname === "string") {
+          const [newVal, count] = countReplace(entry.nickname, find, replace);
+          if (count > 0) { entry.nickname = newVal; totalReplacements += count; fileChanged = true; }
+        }
+        if (doNotes && typeof entry.profile === "string") {
+          const [newVal, count] = countReplace(entry.profile, find, replace);
+          if (count > 0) { entry.profile = newVal; totalReplacements += count; fileChanged = true; }
+        }
         if (doEvents && Array.isArray(entry.list)) {
           for (const cmd of entry.list as Array<Record<string, unknown>>) {
             if ((cmd.code === 401 || cmd.code === 405) && Array.isArray(cmd.parameters)) {

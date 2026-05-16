@@ -88,6 +88,30 @@ export const EditSystemTool: Tool = {
         description: "Map of message key→value for battle/system messages (e.g. { \"actionFailure\": \"Miss!\", \"actorDamage\": \"%1 took %2 damage!\" })",
         additionalProperties: { type: "string" },
       },
+      opt_autosave: {
+        type: "boolean",
+        description: "Enable autosave feature (optAutosave in System.json)",
+      },
+      opt_display_tp: {
+        type: "boolean",
+        description: "Show TP gauge in battle (optDisplayTp in System.json)",
+      },
+      opt_slip_death: {
+        type: "boolean",
+        description: "Allow death from slip damage outside battle (optSlipDeath in System.json)",
+      },
+      opt_floor_death: {
+        type: "boolean",
+        description: "Allow death from floor damage (optFloorDeath in System.json)",
+      },
+      opt_follower_distance: {
+        type: "boolean",
+        description: "Keep followers at a distance on the map (optFollowerDistance in System.json)",
+      },
+      opt_transparent: {
+        type: "boolean",
+        description: "Start with transparent player character (optTransparent in System.json)",
+      },
     },
     required: [],
   },

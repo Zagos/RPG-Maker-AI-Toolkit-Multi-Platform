@@ -87,6 +87,9 @@ export async function handleImportDialogue(ctx: HandlerContext): Promise<string>
           fileChanged = true;
           totalLinesUpdated++;
         }
+        if (lineIdx < entry.lines.length) {
+          errors.push(`Entry at command_index ${entry.command_index}: provided ${entry.lines.length} lines but only ${lineIdx} continuation blocks exist — ${entry.lines.length - lineIdx} lines discarded`);
+        }
       }
 
       if (fileChanged) {

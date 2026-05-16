@@ -32,6 +32,7 @@ export type MapEventCommandInput = {
     | "change-state"
     | "shop"
     | "show-picture"
+    | "tint-picture"
     | "erase-picture"
     | "play-bgm"
     | "play-se"
@@ -79,7 +80,15 @@ export type MapEventCommandInput = {
     | "move-picture"
     | "rotate-picture"
     | "change-actor-images"
-    | "toggle-party-member";
+    | "toggle-party-member"
+    | "change-enemy-hp"
+    | "change-enemy-mp"
+    | "change-enemy-state"
+    | "recover-all-enemies"
+    | "enemy-appear"
+    | "enemy-transform"
+    | "show-battle-animation"
+    | "force-action";
   data?: string | Record<string, unknown>;
 };
 
@@ -364,6 +373,14 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
       return [{ code: 231, indent: 0, parameters: [picture_id, name, origin, 0, x, y, scale_x, scale_y, opacity, blend_mode] }];
     }
 
+    case "tint-picture": {
+      const picture_id = Number(obj["picture_id"] ?? 1);
+      const tone = Array.isArray(obj["tone"]) ? (obj["tone"] as number[]) : [0, 0, 0, 0];
+      const duration = Number(obj["duration"] ?? 60);
+      const wait = Boolean(obj["wait"] ?? false);
+      return [{ code: 234, indent: 0, parameters: [picture_id, tone, duration, wait] }];
+    }
+
     case "erase-picture": {
       const picture_id = Number(obj["picture_id"] ?? 1);
       return [{ code: 235, indent: 0, parameters: [picture_id] }];
@@ -397,7 +414,7 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
     }
 
     case "stop-bgm":
-      return [{ code: 243, indent: 0, parameters: [] }];
+      return [{ code: 242, indent: 0, parameters: [0] }];
 
     case "fade-out": {
       const duration = Number(obj["duration"] ?? (typeof rawData === "string" && rawData ? rawData : 24)) || 24;
@@ -670,6 +687,58 @@ export function commandInputToEventCommands(command: MapEventCommandInput): RPGE
       const actor_id = Number(obj["actor_id"] ?? 1);
       const enable = Boolean(obj["enable"] ?? true);
       return [{ code: 340, indent: 0, parameters: [actor_id, enable ? 0 : 1] }];
+    }
+
+    case "change-enemy-hp": {
+      const enemy_index = Number(obj["enemy_index"] ?? 0);
+      const operation = Number(obj["operation"] ?? 0);
+      const operand = Number(obj["operand"] ?? 0);
+      const allow_ko = Boolean(obj["allow_ko"] ?? false);
+      return [{ code: 331, indent: 0, parameters: [enemy_index, 0, operation, 0, operand, allow_ko] }];
+    }
+
+    case "change-enemy-mp": {
+      const enemy_index = Number(obj["enemy_index"] ?? 0);
+      const operation = Number(obj["operation"] ?? 0);
+      const operand = Number(obj["operand"] ?? 0);
+      return [{ code: 332, indent: 0, parameters: [enemy_index, 0, operation, 0, operand] }];
+    }
+
+    case "change-enemy-state": {
+      const enemy_index = Number(obj["enemy_index"] ?? 0);
+      const action = Number(obj["action"] ?? 0);
+      const state_id = Number(obj["state_id"] ?? 1);
+      return [{ code: 333, indent: 0, parameters: [enemy_index, action, state_id] }];
+    }
+
+    case "recover-all-enemies": {
+      const enemy_index = Number(obj["enemy_index"] ?? -1);
+      return [{ code: 334, indent: 0, parameters: [enemy_index] }];
+    }
+
+    case "enemy-appear": {
+      const enemy_index = Number(obj["enemy_index"] ?? 0);
+      return [{ code: 335, indent: 0, parameters: [enemy_index] }];
+    }
+
+    case "enemy-transform": {
+      const enemy_index = Number(obj["enemy_index"] ?? 0);
+      const enemy_id = Number(obj["enemy_id"] ?? 1);
+      return [{ code: 336, indent: 0, parameters: [enemy_index, enemy_id] }];
+    }
+
+    case "show-battle-animation": {
+      const animation_id = Number(obj["animation_id"] ?? 1);
+      const enemy_index = Number(obj["enemy_index"] ?? -1);
+      return [{ code: 337, indent: 0, parameters: [animation_id, enemy_index] }];
+    }
+
+    case "force-action": {
+      const subject_type = Number(obj["subject_type"] ?? 0);
+      const subject_index = Number(obj["subject_index"] ?? 0);
+      const skill_id = Number(obj["skill_id"] ?? 1);
+      const target_index = Number(obj["target_index"] ?? -1);
+      return [{ code: 338, indent: 0, parameters: [subject_type, subject_index, skill_id, target_index] }];
     }
 
     default:
