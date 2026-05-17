@@ -79,6 +79,7 @@ import { handleReorderPlugin } from "./reorder-plugin.js";
 import { handleExportDialogue } from "./export-dialogue.js";
 import { handleImportDialogue } from "./import-dialogue.js";
 import { handleBatchUpdateEntities } from "./batch-update-entities.js";
+import { handleListScripts, handleReadScript, handleCreateScript, handleEditScript, handleDeleteScript } from "./scripts.js";
 
 // All tool handlers except batch-edit (to avoid circular imports)
 export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
@@ -186,4 +187,9 @@ export const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<stri
   "export-dialogue": handleExportDialogue,
   "import-dialogue": handleImportDialogue,
   "batch-update-entities": handleBatchUpdateEntities,
+  "list-scripts": handleListScripts,
+  "read-script": handleReadScript,
+  "create-script": handleCreateScript,
+  "edit-script": handleEditScript,
+  "delete-script": handleDeleteScript,
 };

@@ -1,10 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "url";
 import { RPGMakerValidator } from "../validator.js";
 import { PluginTemplates } from "../templates/plugin-template.js";
 import type { HandlerContext } from "./types.js";
 
 const BRIDGE_PORT = 9001;
+const __dirname   = path.dirname(fileURLToPath(import.meta.url));
+const GAME_BRIDGE_PATH = path.join(__dirname, "../../ruby-bridge/game-bridge.rb");
 
 function generatePluginCode(
   pluginName: string,
@@ -172,7 +175,49 @@ export async function handleCreatePluginAdvanced(ctx: HandlerContext): Promise<s
 }
 
 export async function handleSetupDebugPlugin(ctx: HandlerContext): Promise<string> {
-  const { writer, projectPath } = ctx;
+  const { writer, projectPath, engine } = ctx;
+
+  // Ruby engine path: inject game-bridge.rb as a script entry
+  if (engine === "vxace" || engine === "vx" || engine === "xp") {
+    try {
+      const source = fs.readFileSync(GAME_BRIDGE_PATH, "utf-8");
+      const existing = writer.listScripts();
+      const alreadyInstalled = existing.some((s) => s.name === "RpgMakerMCPBridge");
+
+      if (alreadyInstalled) {
+        const script = writer.readScript("RpgMakerMCPBridge")!;
+        writer.updateScript(script.id, { source });
+        ctx.changeLog.append({ tool: "setup-debug-plugin", entityType: "Script", entityId: script.id, action: "update", summary: "RpgMakerMCPBridge script updated" });
+        return JSON.stringify({
+          success: true,
+          message: "RpgMakerMCPBridge script updated in Scripts editor",
+          script_id: script.id,
+          port: 9002,
+          instructions: [
+            "1. Close and reopen the project in RPG Maker (so it picks up the change)",
+            "2. Press Play to launch the game",
+            "3. Use runtime tools — they connect automatically via TCP on port 9002",
+          ].join("\n"),
+        });
+      }
+
+      const id = writer.addScript("RpgMakerMCPBridge", source, true);
+      ctx.changeLog.append({ tool: "setup-debug-plugin", entityType: "Script", entityId: id, action: "create", summary: "RpgMakerMCPBridge script installed" });
+      return JSON.stringify({
+        success: true,
+        message: "RpgMakerMCPBridge script installed in Scripts editor",
+        script_id: id,
+        port: 9002,
+        instructions: [
+          "1. Close and reopen the project in RPG Maker (so it picks up the change)",
+          "2. Press Play to launch the game",
+          "3. Use runtime tools — they connect automatically via TCP on port 9002",
+        ].join("\n"),
+      });
+    } catch (error) {
+      return JSON.stringify({ error: (error as Error).message });
+    }
+  }
 
   try {
     const pluginCode = PluginTemplates.debugBridge(BRIDGE_PORT);

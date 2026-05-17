@@ -35,6 +35,11 @@ export interface IProjectWriter {
   listPlugins(): Array<{ name: string; status: boolean; description: string; parameters: Record<string, unknown> }>;
   removePluginFromRegistry(pluginName: string): void;
   writeSystemConfig(data: Record<string, unknown>): void;
+  listScripts(): { id: number; name: string }[];
+  readScript(idOrName: number | string): { id: number; name: string; source: string } | null;
+  addScript(name: string, source: string, insertBeforeMain?: boolean): number;
+  updateScript(id: number, updates: { name?: string; source?: string }): void;
+  deleteScript(id: number): void;
   refreshVersionId(): void;
   getBackups(filename?: string): string[];
   restoreFromBackup(backupFilename: string): void;
