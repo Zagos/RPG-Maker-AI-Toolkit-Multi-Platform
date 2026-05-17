@@ -129,7 +129,9 @@ import { DeleteScriptTool } from "./adapters/mz/tools/delete-script.js";
 // Handlers
 import type { HandlerContext } from "./adapters/mz/handlers/types.js";
 import { TOOL_HANDLERS as BASE_TOOL_HANDLERS } from "./adapters/mz/handlers/registry.js";
+import { RUBY_RUNTIME_HANDLERS } from "./adapters/mz/handlers/registry-ruby.js";
 import { handleBatchEdit } from "./adapters/mz/handlers/batch-edit.js";
+import { RPGMakerRubyBridge } from "./adapters/ruby-bridge/tcp-bridge.js";
 
 function loadEnvFile(): void {
   const envPath = path.resolve(process.cwd(), ".env");
@@ -155,8 +157,9 @@ const SUPPORTED_ENGINES = ["mz", "mv", "vxace", "vx", "xp"] as const;
 type SupportedEngine = typeof SUPPORTED_ENGINES[number];
 const DEBUG = process.env.MCP_DEBUG === "true";
 const LOG_LEVEL = process.env.LOG_LEVEL || "info";
-const BRIDGE_PORT = 9001;
-const MAX_BACKUPS = parseInt(process.env.BACKUP_MAX_COUNT || "10", 10);
+const BRIDGE_PORT      = 9001;
+const RUBY_BRIDGE_PORT = parseInt(process.env.RUBY_BRIDGE_PORT || "9002", 10);
+const MAX_BACKUPS      = parseInt(process.env.BACKUP_MAX_COUNT || "10", 10);
 
 const logger = {
   debug: (msg: string, data?: unknown) => {
@@ -381,23 +384,14 @@ const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = 
 };
 
 // Tools that require RPG Maker MZ or MV and must not run on Ruby engines (VX Ace / VX / XP).
-// Grouped by reason:
-//   runtime  — need the NW.js HTTP debug bridge (no equivalent in Ruby engines)
-//   plugins  — JS plugin system doesn't exist in Ruby engines
-//   mz-fmt   — write MZ-specific event command codes or data structures that differ in Ruby engines
+//   plugins  — JS plugin system doesn't exist in Ruby engines (use script tools instead)
+//   runtime  — run-battle-suite needs the NW.js event loop; no Ruby equivalent implemented yet
 const RUBY_UNSUPPORTED_TOOLS = new Set<string>([
-  // runtime bridge
-  "launch-game", "setup-debug-plugin", "get-game-state",
-  "set-switch", "get-switch", "set-variable", "get-variable",
-  "get-inventory", "modify-inventory", "call-common-event",
-  "modify-actor-runtime", "get-actor-runtime", "manage-party-runtime",
-  "control-weather-runtime", "play-audio-runtime", "get-map-state-runtime",
-  "get-battle-state-runtime", "control-timer-runtime", "execute-script",
-  "show-message", "teleport-player", "save-game", "load-game",
-  "set-party-state", "start-encounter", "run-battle-suite",
   // plugins
   "create-plugin", "create-plugin-advanced", "manage-plugins",
   "edit-plugin-parameters", "reorder-plugin",
+  // runtime tools with no Ruby equivalent (yet)
+  "run-battle-suite",
 ]);
 
 // Tools that are only meaningful for Ruby engine projects (VX Ace / VX / XP).
@@ -421,25 +415,32 @@ const RUBY_EVENT_CMD_TOOLS = new Set<string>([
 ]);
 
 const debugBridge = new RPGMakerDebugBridge();
+const rubyBridge  = new RPGMakerRubyBridge(RUBY_BRIDGE_PORT);
 // changeLog is a singleton so all tool calls share the same log file
 let changeLog: ChangeLog;
 
 async function handleToolCall(toolName: string, toolInput: Record<string, unknown>): Promise<string> {
   logger.debug(`Tool called: ${toolName}`, toolInput);
 
-  const handler = TOOL_HANDLERS[toolName];
+  const isRubyEngine = RPGMAKER_ENGINE in RUBY_ENGINE_NAMES;
+
+  // For Ruby engines, prefer the Ruby-specific handler if one exists
+  const handler = (isRubyEngine && RUBY_RUNTIME_HANDLERS[toolName])
+    ? RUBY_RUNTIME_HANDLERS[toolName]
+    : TOOL_HANDLERS[toolName];
+
   if (!handler) {
     return JSON.stringify({ error: `Unknown tool: ${toolName}` });
   }
 
-  if (RPGMAKER_ENGINE in RUBY_ENGINE_NAMES && RUBY_UNSUPPORTED_TOOLS.has(toolName)) {
+  if (isRubyEngine && RUBY_UNSUPPORTED_TOOLS.has(toolName)) {
     const engineLabel = RUBY_ENGINE_NAMES[RPGMAKER_ENGINE];
     return JSON.stringify({
       error: `Tool '${toolName}' is not available for RPG Maker ${engineLabel}. This tool requires RPG Maker MZ or MV.`,
     });
   }
 
-  if (!(RPGMAKER_ENGINE in RUBY_ENGINE_NAMES) && RUBY_ONLY_TOOLS.has(toolName)) {
+  if (!isRubyEngine && RUBY_ONLY_TOOLS.has(toolName)) {
     return JSON.stringify({
       error: `Tool '${toolName}' is only available for Ruby engine projects (VX Ace, VX, XP). Use plugin tools for RPG Maker MZ/MV.`,
     });
@@ -474,6 +475,7 @@ async function handleToolCall(toolName: string, toolInput: Record<string, unknow
     projectPath: RPGMAKER_PROJECT_PATH!,
     engine: RPGMAKER_ENGINE,
     debugBridge,
+    rubyBridge,
     changeLog,
     debug: DEBUG,
   };

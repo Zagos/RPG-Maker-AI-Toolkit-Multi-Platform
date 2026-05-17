@@ -1,6 +1,7 @@
 import type { IProjectReader } from "../../../core/types/reader.js";
 import type { IProjectWriter } from "../../../core/types/writer.js";
 import type { RPGMakerDebugBridge } from "../debug-bridge.js";
+import type { RPGMakerRubyBridge } from "../../ruby-bridge/tcp-bridge.js";
 import type { ChangeLog } from "../../../core/change-log.js";
 
 export interface HandlerContext {
@@ -10,6 +11,7 @@ export interface HandlerContext {
   projectPath: string;
   engine: string;
   debugBridge: RPGMakerDebugBridge;
+  rubyBridge: RPGMakerRubyBridge;
   changeLog: ChangeLog;
   debug: boolean;
 }
