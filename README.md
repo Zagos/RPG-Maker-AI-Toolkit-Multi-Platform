@@ -10,11 +10,13 @@
 
 ### What it does
 
-RPG Maker AI Toolkit exposes your RPG Maker project as a set of tools that an AI assistant can call. Instead of describing what you want and then copy-pasting files by hand, you just ask the AI and it reads/writes the project files for you — with automatic backups, validation, and a full change log.
+RPG Maker AI Toolkit exposes your RPG Maker project as **12 macro tools** that an AI assistant can call. Instead of describing what you want and then copy-pasting files by hand, you just ask the AI and it reads/writes the project files for you — with automatic backups, validation, and a full change log.
+
+The server architecture uses 12 high-level macro tools exposed to the LLM, backed by ~110 internal handlers. This keeps the LLM's tool list lean while preserving full depth. A `batch-edit` escape hatch is also available for multi-step operations that need direct handler access.
 
 Supports **all major RPG Maker engines**: MZ, MV (JSON-based), and VX Ace, VX, XP (Ruby Marshal format via a built-in bridge).
 
-For MZ/MV it also includes a **runtime control bridge**: install a lightweight plugin in your game once, and the AI can read game state, flip switches, set variables, teleport the player, and trigger battles while the game is actually running.
+For MZ/MV it also includes a **runtime control bridge**: install a lightweight plugin in your game once, and the AI can read game state, flip switches, set variables, teleport the player, and trigger battles while the game is actually running. VX Ace, VX, and XP use an equivalent TCP bridge.
 
 ### Requirements
 
@@ -49,7 +51,7 @@ RPGMAKER_PROJECT_PATH=C:\Users\you\Documents\MyGame
 # Required — engine to use: mz (default) | mv | vxace | vx | xp
 RPGMAKER_ENGINE=mz
 
-# Optional — path to the RPG Maker MZ executable (for launch-game tool, MZ only)
+# Optional — path to the RPG Maker executable (for game-setup action: launch)
 RPGMAKER_EXECUTABLE_PATH=C:\Program Files\RPG Maker MZ\RPGMakerMZ.exe
 
 # Optional — path to Ruby executable (required for vxace / vx / xp)
@@ -96,540 +98,270 @@ Add this block to `claude_desktop_config.json`:
 
 | Engine | Format | `RPGMAKER_ENGINE` | Runtime bridge |
 |---|---|---|---|
-| RPG Maker MZ | JSON | `mz` (default) | ✅ HTTP (port 9001) |
-| RPG Maker MV | JSON | `mv` | ✅ HTTP (port 9001) |
-| RPG Maker VX Ace | `.rvdata2` (Marshal) | `vxace` | ✅ TCP (port 9002) |
-| RPG Maker VX | `.rvdata` (Marshal) | `vx` | ✅ TCP (port 9002) |
-| RPG Maker XP | `.rxdata` (Marshal) | `xp` | ✅ TCP (port 9002) |
+| RPG Maker MZ | JSON | `mz` (default) | Yes — HTTP (port 9001) |
+| RPG Maker MV | JSON | `mv` | Yes — HTTP (port 9001) |
+| RPG Maker VX Ace | `.rvdata2` (Marshal) | `vxace` | Yes — TCP (port 9002) |
+| RPG Maker VX | `.rvdata` (Marshal) | `vx` | Yes — TCP (port 9002) |
+| RPG Maker XP | `.rxdata` (Marshal) | `xp` | Yes — TCP (port 9002) |
 
 ### Project Structure
 
 ```
 src/
-├── index.ts                   # Server entry point, tool registry, HTTP bridge
+├── index.ts                   # Server entry point — exposes 12 macros + batch-edit
 ├── core/
+│   ├── resolve-handler.ts     # Engine-aware handler routing
 │   ├── change-log.ts          # mcp-changes.json audit log
 │   └── types/
 │       ├── reader.ts          # IProjectReader interface
 │       └── writer.ts          # IProjectWriter interface
+├── macro/
+│   ├── schemas/               # 12 macro tool JSON schemas
+│   └── handlers/              # Macro dispatchers → call internal handlers
+├── handlers/                  # ~110 internal handlers (not exposed to LLM)
+│   ├── registry.ts / registry-ruby.ts / types.ts
+│   └── *.ts
 └── adapters/
     ├── mz/                    # RPG Maker MZ (JSON)
     │   ├── reader.ts / writer.ts / validator.ts
     │   ├── commands.ts / constants.ts / debug-bridge.ts
-    │   ├── handlers/          # ~88 handler files
-    │   └── tools/             # ~88 tool schema files
-    ├── mv/                    # RPG Maker MV (JSON, extends MZ)
+    │   └── tools/             # Internal JSON schemas (batch-edit uses these)
+    ├── mv/                    # RPG Maker MV (extends MZ)
     ├── vxace/                 # RPG Maker VX Ace (.rvdata2)
-    │   ├── reader.ts / writer.ts / normalize.ts
-    ├── vx/                    # RPG Maker VX (.rvdata, extends VXAce)
-    ├── xp/                    # RPG Maker XP (.rxdata, extends VXAce)
+    ├── vx/                    # RPG Maker VX (.rvdata)
+    ├── xp/                    # RPG Maker XP (.rxdata)
     └── ruby-bridge/
         ├── bridge.rb          # Ruby Marshal ↔ JSON converter
-        ├── index.ts           # Node wrapper (readMarshalFile, writeMarshalFile)
-        ├── game-bridge.rb     # TCP server injected into the game (RGSS3, port 9002)
-        └── tcp-bridge.ts      # Node.js TCP client for game-bridge.rb
-tests/                         # Vitest test suite (640+ tests, 32 suites)
-scripts/
-├── copy-assets.js             # Copies .rb files to dist/ after tsc build
-└── launch-rpgmaker.js
-.github/workflows/ci.yml       # Node 20+22 × Ruby 3.2 matrix CI
+        ├── game-bridge.rb     # TCP server injected into game (port 9002)
+        └── tcp-bridge.ts      # Node.js TCP client
+tests/                         # Vitest test suite (810+ tests, 43 suites)
 ```
+
+---
 
 ### Available Tools
 
-All tools return JSON. `_id` fields are optional on input — omit them to **create** a new entity; include them to **update** an existing one.
+The LLM sees **12 macro tools** plus `batch-edit`. Each macro accepts `{ action, data }` where `data` carries action-specific fields. Exceptions: `runtime-control` and `runtime-inspect` use flat top-level fields; `manage-backups` also uses flat fields.
+
+All tools return JSON. Every successful write creates a timestamped backup and appends an entry to the change log.
 
 ---
 
-#### Data & System
+#### `runtime-control` — Control the running game
 
-| Tool | Description |
-|---|---|
-| `health-check` | Server liveness check — returns status, project path, timestamp |
-| `list-game-data` | List entities of a given type with names and IDs |
-| `list-maps` | List all maps from MapInfos.json, sorted by display order |
-| `read-map` | Read map metadata, events list and encounter groups |
-| `read-entity` | Read a single entity by type and ID |
-| `list-resources` | List asset files in `img/` and `audio/` directories by category |
-| `delete-entity` | Null out an entity in its database array (soft-delete with backup) |
-| `get-change-history` | Query the audit log of all MCP writes |
-| `edit-system` | Edit global game settings: title, currency, party, start position, switch/variable names, audio, UI terms |
-| `read-system-extended` | Read extended System.json sections not exposed by `edit-system`: terms, vehicles, sounds, window settings |
+Modifies live game state while the game is running. Requires the debug bridge to be set up first (see **Runtime Bridge Setup** below).
 
-**`list-game-data`** — `data_type` enum: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops` `States` `Animations` `Tilesets` `Maps` `CommonEvents`
-
-**`read-map`** — input: `map_id (number)`
-
-**`read-entity`** — `entity_type`: `Actor` `Item` `Enemy` `Weapon` `Armor` `Skill` `Class` `State` `Troop` `CommonEvent` · `entity_id (integer)`
-
-**`list-resources`** — `category`: `characters` · `faces` · `battlers` · `sv_actors` · `tilesets` · `parallaxes` · `pictures` · `bgm` · `bgs` · `se` · `me` · `all`. Returns filenames without extension. Call this before assigning sprite/audio names in other tools to avoid silent failures from missing assets.
-
-**`delete-entity`** — `entity_type (Actor|Item|Enemy|Weapon|Armor|Skill|Class|State|Troop|CommonEvent)` · `entity_id` · `confirm: true` (required guard). Creates a backup before nulling. The index slot is preserved — existing references remain pointing to a null entry, equivalent to the RPG Maker editor's delete behavior.
-
-**`get-change-history`** — filters: `limit` · `entity_type` · `tool` · `action (create|update|delete)` · `since (ISO 8601)`
-
-**`edit-system`** — all fields optional: `game_title` · `currency_unit` · `initial_party [actor_ids]` · `start_map_id` · `start_x` · `start_y` · `switch_names {"1":"Name"}` · `variable_names {"1":"Name"}` · `title_bgm` · `battle_bgm` · `victory_me` · `defeat_me` · `terms_basic {"0":"Level"}` · `terms_params {"0":"Max HP"}` · `terms_commands {"0":"Fight"}` · `terms_messages {"actorDamage":"..."}` (UI labels and battle message strings) · `opt_autosave` (boolean — enable auto-save) · `opt_display_tp` (boolean — show TP in battle) · `opt_slip_death` (boolean — allow death from slip damage) · `opt_floor_death` (boolean — allow death from floor damage) · `opt_follower_distance` (boolean — follower distance setting) · `opt_transparent` (boolean — start with transparent main actor)
-
-**`read-system-extended`** — `section` enum: `terms` `vehicles` `sounds` `basic` `all` (default: `all`). Read-only; no writes.
-
----
-
-#### Characters & Enemies
-
-| Tool | Key inputs |
-|---|---|
-| `generate-character` | `name` · `archetype` · `nickname?` · `initial_level?` · `max_level?` · `character_name?` · `character_index?` · `face_name?` · `face_index?` · `profile?` · `note?` |
-| `edit-actor` | `actor_id?` · `name` · `nickname` · `class_id` · `initial_level` · `max_level` · `face.name` · `face.index` · `character.name` · `character.index` · `battler_name` · `equips [weapon,shield,head,body,acc]` · `profile` · `note` |
-| `edit-enemy` | `enemy_id?` · `name` · `gold` · `exp` · `battler_name` · `battler_hue (0-360)` · `max_hp` · `max_mp` · `attack` · `defense` · `magic_attack` · `magic_defense` · `agility` · `luck` · `drops [{kind,data_id,denominator}]` · `note` |
-| `edit-enemy-actions` | `enemy_id` · `mode (replace\|append\|clear)` · `actions [{skill_id, rating, condition_type, condition_param1, condition_param2}]` |
-| `edit-drop-items` | `enemy_id` · `mode (replace\|append\|clear)` · `drops [{kind,data_id,denominator}]` |
-
-**`generate-character`** — Generates a complete actor from a high-level concept. Reads the project's classes, weapons, and armors and picks the best fit for the chosen archetype via keyword matching. Sprite and face sheet are auto-selected. Archetypes: `warrior` · `mage` · `rogue` · `healer` · `paladin` · `ranger`. Returns `{ actor_id, class_id, equips, sprite }`.
-
-**Archetype behavior:**
-
-| Archetype | Preferred class keywords | Weapon preference | Armor preference | Default sprite |
-|---|---|---|---|---|
-| `warrior` | warrior, fighter, knight | sword, axe, blade | heavy, plate, mail | Actor1 idx 0 |
-| `mage` | mage, wizard, sorcerer | staff, rod, wand | robe, cloth, mystic | Actor2 idx 0 |
-| `rogue` | rogue, thief, assassin | dagger, knife, claw | leather, light | Actor3 idx 0 |
-| `healer` | healer, cleric, priest | staff, mace, holy | robe, sacred | Actor2 idx 2 |
-| `paladin` | paladin, holy knight | sword, lance, blessed | heavy, holy, divine | Actor1 idx 2 |
-| `ranger` | ranger, archer, hunter | bow, crossbow, gun | leather, light | Actor3 idx 2 |
-
-**`edit-actor`** — `equips` is an array of 5 IDs in order: `[weapon_id, shield_id, head_id, body_id, accessory_id]`. Use `0` for empty slot. `face` and `character` are nested objects with `name` (spritesheet filename) and `index` (0–7 or 0–3).
-
-**`edit-enemy`** stat fields map to RPG Maker's `params[8]` array. Omit any field to keep the existing value.
-
-**`edit-enemy-actions`** — Edits the AI action table of an enemy. Each action specifies which skill to use (`skill_id`), how often (`rating` 1–9), and under what condition (`condition_type`: 0=always, 1=turn X/Y, 2=HP≤%, 3=MP≤%, 4=state applied, 5=party level≥, 6=switch ON). `condition_param1`/`condition_param2` carry the threshold values.
-
-**`edit-drop-items`** — Dedicated drop table editor. `kind`: 0=none, 1=item, 2=weapon, 3=armor. `denominator`: 1-in-N drop rate (e.g. `4` = 25% chance). Up to 3 slots; `append` fills from the first empty slot; `clear` resets all slots.
-
----
-
-#### Traits & Effects
-
-| Tool | Key inputs |
-|---|---|
-| `edit-traits` | `entity_type (Actor\|Class\|Enemy\|Weapon\|Armor\|State)` · `entity_id` · `mode (replace\|append\|clear)` · `traits [{code, data_id, value}]` |
-| `edit-effects` | `entity_type (Skill\|Item)` · `entity_id` · `mode (replace\|append\|clear)` · `effects [{code, data_id, value1, value2}]` |
-
-**`edit-traits`** — Structured editing of passive traits on any entity that carries them. `mode=replace` overwrites the full array; `mode=append` merges by `code`+`data_id` (upsert); `mode=clear` empties it.
-
-Common trait codes:
-
-| Code | Effect | Code | Effect |
-|---|---|---|---|
-| 11 | Element rate | 41 | Add skill type |
-| 12 | Debuff rate | 42 | Seal skill type |
-| 13 | State rate | 43 | Add skill |
-| 14 | State resist | 44 | Seal skill |
-| 21 | Parameter rate | 51 | Equip weapon type |
-| 22 | Ex-parameter (hit/evasion/crit) | 52 | Equip armor type |
-| 23 | Sp-parameter (target rate/guard) | 54 | Fix equip slot |
-| 31 | Attack element | 55 | Seal equip slot |
-| 32 | Attack state | 61 | Action plus |
-| 33 | Attack speed | 62 | Special flag |
-| | | 63 | Collapse type |
-| | | 64 | Party ability |
-
-**`edit-effects`** — Structured editing of use-effects on Skills and Items. `mode=append` adds to existing effects without deduplication.
-
-Common effect codes:
-
-| Code | Effect | Code | Effect |
-|---|---|---|---|
-| 11 | Recover HP (value1=rate, value2=flat) | 31 | Add buff (param, turns) |
-| 12 | Recover MP | 32 | Add debuff |
-| 13 | Gain TP | 33 | Remove buff |
-| 21 | Add state (data_id=stateId, value1=chance) | 34 | Remove debuff |
-| 22 | Remove state | 41 | Learn skill (data_id=skillId) |
-| | | 42 | Call common event (data_id=eventId) |
-| | | 44 | Gain exp |
-
----
-
-#### Equipment & Items
-
-| Tool | Key inputs |
-|---|---|
-| `edit-item` | `item_id?` · `name` · `description` · `price` · `icon_index` · `itype_id (1=item,2=key)` · `consumable` · `scope (0-11)` · `occasion (0-3)` · `speed` · `success_rate` · `repeats` · `tp_gain` · `hit_type (0-2)` · `animation_id` · `note` |
-| `edit-weapon` | `weapon_id?` · `name` · `wtype_id` · `price` · `icon_index` · `animation_id` · stat bonuses |
-| `edit-armor` | `armor_id?` · `name` · `atype_id` · `etype_id` · `price` · `icon_index` · stat bonuses |
-
-Stat bonus fields (weapons & armors): `max_hp` · `max_mp` · `attack` · `defense` · `magic_attack` · `magic_defense` · `agility` · `luck`
-
-**`edit-armor`** — `etype_id` controls the equipment slot: 1=weapon, 2=shield, 3=head, 4=body, 5=accessory (default 1).
-
-**`edit-item`** — `scope` values: 0=none, 1=1 enemy, 2=all enemies, 3=1 enemy (dead), 4=all enemies (dead), 5=1 ally, 6=all allies, 7=1 ally (dead), 8=all allies (dead), 9=user, 10=1 ally (KO), 11=all allies (KO). `occasion` values: 0=always, 1=battle only, 2=menu only, 3=never. `hit_type`: 0=certain, 1=physical, 2=magical.
-
----
-
-#### Skills, Classes & States
-
-| Tool | Key inputs |
-|---|---|
-| `edit-skill` | `skill_id?` · `name` · `description` · `mp_cost` · `tp_cost` · `scope` · `occasion` · `speed` · `success_rate` · `animation_id` · `damage_type` · `icon_index` · `message1` · `message2` · `stype_id` · `required_wtype_id1` · `required_wtype_id2` · `tp_gain` · `repeats` · `hit_type` · `damage_formula` · `damage_element_id` · `damage_variance` · `damage_critical` · `note` |
-| `edit-class` | `class_id?` · `name` · `exp_basis` · `exp_extra` · `exp_acc_a` · `exp_acc_b` · `learnings_mode (replace\|append\|remove_at_level)` · `learnings [{level,skill_id,note?}]` · `remove_at_level` · `note` |
-| `edit-state` | `state_id?` · `name` · `icon_index` · `priority` · `restriction` · `min_turns` · `max_turns` · `remove_at_battle_end` · `remove_by_recover` · `remove_by_damage` · `damage_rate` · `description` · `overlay (0-10)` · `motion (0-10)` · `remove_by_walking` · `steps_to_remove` · `note` |
-| `edit-class-learnings` | `class_id` · `mode (replace\|append\|remove_at_level)` · `learnings [{level,skill_id,note?}]` · `level?` |
-
-**`edit-skill`** damage sub-fields: patch `damage_formula`, `damage_element_id`, `damage_variance`, `damage_critical` independently — reads the current `damage` object first, patches only the provided fields, writes back.
-
-**`edit-class`** / **`edit-class-learnings`** — `append` mode upserts by level (if an entry for that level exists it is replaced). Entries are sorted by level after every write. `remove_at_level` removes all learnings at the specified level.
-
----
-
-#### Troops (Enemy formations)
-
-| Tool | Key inputs |
-|---|---|
-| `create-troop` | `name` · `members [{enemy_id, x?, y?, hidden?}]` |
-| `edit-troop` | `troop_id` · `name?` · `members?` |
-
-**`create-troop`** — Creates a new entry in `Troops.json`. `members` is required (1–8 enemies). If `x`/`y` are omitted, enemies are auto-spaced across the battle screen. Returns `{ success, troop_id, name, member_count }`.
-
-**`edit-troop`** — Renames a troop or replaces its full member list. Provide at least one of `name` or `members`.
-
-| Tool | Key inputs |
-|---|---|
-| `edit-troop-events` | `troop_id` · `mode (replace_all\|append\|clear)` · `pages [{conditions, span, commands}]` |
-
-**`edit-troop-events`** — Add, replace, or clear battle event pages in a troop. Each page has trigger conditions and a command list using the same `{type, data}` format as `create-map-event`.
-
-Page conditions: `turnValid`+`turnA`+`turnB` (fire on turn A, A+B, A+2B…) · `enemyValid`+`enemyIndex`+`enemyHp` (enemy HP%) · `actorValid`+`actorId`+`actorHp` · `switchValid`+`switchId`. `span`: 0=once per battle, 1=once per turn, 2=each moment.
-
-Battle-only command types (usable inside troop event pages):
-
-| Command type | Code | Key parameters |
+| `action` | Key fields | Description |
 |---|---|---|
-| `change-enemy-hp` | 331 | `enemy_index` · `operation (0=add/1=sub/2=mul/3=div/4=mod)` · `operand` · `allow_ko (boolean)` |
-| `change-enemy-mp` | 332 | `enemy_index` · `operation` · `operand` |
-| `change-enemy-state` | 333 | `enemy_index` · `action (0=add/1=remove)` · `state_id` |
-| `recover-all-enemies` | 334 | `enemy_index` (-1 = all) |
-| `enemy-appear` | 335 | `enemy_index` |
-| `enemy-transform` | 336 | `enemy_index` · `enemy_id` |
-| `show-battle-animation` | 337 | `animation_id` · `enemy_index` (-1 = all) |
-| `force-action` | 338 | `subject_type (0=enemy/1=actor)` · `subject_index` · `skill_id` · `target_index` |
+| `set-switch` | `id`, `value` | Turn a game switch ON or OFF |
+| `set-variable` | `id`, `value` | Assign a value to a game variable |
+| `teleport` | `map_id`, `x`, `y`, `direction?` | Move the player to any map and coordinates |
+| `save` | `slot?` | Save to a slot (default 98) |
+| `load` | `slot?` | Load from a slot (default 98) |
+| `modify-inventory` | `operations [{action,type,id?,amount}]` | Add or remove items / weapons / armors / gold |
+| `set-party-state` | `actor_id?`, `hp_percent?`, `mp_percent?`, `states?` | Set HP/MP % and status effects for one actor or whole party |
+| `call-common-event` | `common_event_id` | Trigger a common event by ID |
+| `modify-actor` | `actor_id`, `field`, `value`, `mode?` | Change an actor's level / exp / HP / MP / TP |
+| `manage-party` | `action (get\|add\|remove)`, `actor_id?` | Read party list or add/remove a member |
+| `control-weather` | `type (none\|rain\|storm\|snow)`, `power (0-9)`, `duration?` | Change weather effect |
+| `play-audio` | `action (bgm\|bgs\|se\|me\|stop_bgm\|stop_bgs\|stop_se)`, `name?`, `volume?`, `pitch?`, `pan?` | Play or stop audio |
+| `control-timer` | `action (start\|stop\|get)`, `frames?` | Control the in-game countdown timer |
+| `show-message` | `text`, `speaker?` | Display a message in the game's message window |
+| `execute-script` | `code`, `timeout?` | Evaluate arbitrary JavaScript (MZ/MV) or Ruby (VX Ace/VX/XP) in the running game |
 
 ---
 
-#### Common Events
+#### `runtime-inspect` — Read live game state
 
-| Tool | Key inputs |
-|---|---|
-| `create-common-event` | `name` · `trigger (0\|1\|2)?` · `switch_id?` · `commands?` |
-| `edit-common-event` | `event_id` · `name?` · `trigger?` · `switch_id?` · `commands?` |
+Reads the current state of the running game. Same bridge requirement as `runtime-control`.
 
-**Trigger values:** `0` = None (call-only) · `1` = Autorun (runs while switch ON) · `2` = Parallel (loops while switch ON)
-
-`commands` use the same format as `create-map-event`: `[{ type, data }]`
-
----
-
-#### Maps & Events
-
-| Tool | Key inputs |
-|---|---|
-| `create-map` | `name` · `map_id?` · `width?` · `height?` · `tileset_id?` · `parent_id?` · `scroll_type?` · `encounter_step?` · `note?` · `enable_name_display?` · `autoplay_bgm?` · `bgm_name?` · `autoplay_bgs?` · `bgs_name?` |
-| `edit-map` | `map_id` · `name?` · `tileset_id?` · `scroll_type?` · `encounter_step?` · `autoplay_bgm?` · `bgm_name?` · `bgm_volume?` · `bgm_pitch?` · `autoplay_bgs?` · `bgs_name?` · `bgs_volume?` · `bgs_pitch?` · `parallax_name?` · `parallax_show?` · `parallax_loop_x?` · `parallax_loop_y?` · `parallax_sx?` · `parallax_sy?` · `disable_dashing?` · `specify_battleback?` · `battleback1?` · `battleback2?` · `encounters [{enemy_id,weight?}]?` |
-| `delete-map` | `map_id` · `confirm: true` (required) |
-| `create-map-event` | `map_id` · `event_name` · `x` · `y` · `event_type (npc\|chest\|enemy\|trigger)` · `character` · `pages` · `dialogue` · `treasure` · `troop_id` |
-| `edit-map-event` | `map_id` · `event_id` · `name?` · `x?` · `y?` · `note?` · `append_commands?` |
-| `delete-map-event` | `map_id` · `event_id` |
-| `add-dialogue` | `dialogue_lines [{speaker?, text}]` · `event_name?` |
-| `create-dialogue-advanced` | `dialogue_name` · `dialogue_nodes` (branching tree with choices, conditions, actions) |
-| `story-generator` | `story_title` · `story_description` · `scenes` (full multi-scene story) |
-
-**`create-map`** — Creates a new empty map and registers it in `MapInfos.json`. If `map_id` is omitted, the next available ID is auto-assigned. The tile data array is initialised to all-zeros (6 layers × width × height). Returns `{ success, map_id, name, width, height, tileset_id, parent_id, filename }`.
-
-**`delete-map`** — Deletes `MapXXX.json` (after backup) and nulls the entry in `MapInfos.json`. Requires `confirm: true` to prevent accidental deletion.
-
-**`edit-map-event`** — Rename, move, or append commands to an existing event. `append_commands` inserts before the terminator on page 0. Command format: `{ type, data }` — types: `message` · `choice` · `wait` · `transfer` · `script` · `switch` · `variable` · `common-event` · `battle` · `animation` · `show-picture` · `tint-picture` · `move-picture` · `rotate-picture` · `erase-picture` (and many more — see EXAMPLES.md for the full command types reference).
-
-| `edit-event-page` | `map_id` · `event_id` · `mode (add\|replace\|remove)` · `page_index?` · `page?` |
-
-**`edit-event-page`** — Add a new page to an existing map event, replace a specific page by index, or remove a page (minimum 1 page enforced). Used to build multi-state NPCs without recreating the entire event. Page fields: `trigger` (0–4) · `priority_type` (0–2) · `move_type` (0–3) · `move_speed` · `move_frequency` · `direction_fix` · `walk_anime` · `step_anime` · `through` · `character_name` · `character_index` · `conditions` (switches/variables/self-switch/actor/item) · `commands [{type, data}]`.
-
-**`delete-map-event`** — Nulls the event slot in the map's events array (non-destructive to surrounding events).
-
-`create-map-event` **event types:**
-- `npc` — walking/talking character
-- `chest` — treasure chest with item reward
-- `enemy` — battle trigger
-- `trigger` — generic script trigger
+| `action` / `type` | Key fields | Returns |
+|---|---|---|
+| `game-state` | — | Map ID, player position, party HP/levels, gold |
+| `switch` | `id` | Current ON/OFF value and name |
+| `variable` | `id` | Current numeric value and name |
+| `inventory` | `category? (items\|weapons\|armors\|all)` | Party inventory with counts |
+| `actor` | `actor_id` | Level, HP, MP, TP, states, equipment, skills |
+| `party` | — | Current party member list |
+| `map` | — | Map dimensions, player position, active weather |
+| `battle` | — | Current battle state: turn, enemies, party (returns `in_battle: false` if not in battle) |
+| `timer` | — | Timer state: `{ working, seconds }` |
 
 ---
 
-#### Vehicles
+#### `query-data` — Read project data
 
-| Tool | Key inputs |
-|---|---|
-| `edit-vehicle` | `vehicle (boat\|ship\|airship)` · `character_name?` · `character_index?` · `bgm? {name,volume,pitch,pan}` · `start_map_id?` · `start_x?` · `start_y?` |
+Read-only access to all project data files. No writes are performed.
 
-**`edit-vehicle`** — Edits boat, ship, or airship settings in `System.json`. All fields except `vehicle` are optional. Changes take effect on next game start (or map reload if already playing).
+| `action` | Key fields | Description |
+|---|---|---|
+| `list` | `data_type` | List entities of a type with IDs and names |
+| `entity` | `entity_type`, `entity_id` | Read a single entity's full data |
+| `map` | `map_id` | Read map metadata, events, and encounters |
+| `maps` | — | List all maps from MapInfos |
+| `resources` | `category?` | List asset files in `img/` and `audio/` by category |
+| `system` | `section?` | Read System.json (section: `terms\|vehicles\|sounds\|basic\|all`) |
+| `animation` | `animation_id?` | Read one animation or list all |
+| `tileset` | `tileset_id?`, `include_flags?` | Read tileset metadata and optional flag array |
+| `search` | `entity_type`, `query` | Case-insensitive substring search by name |
+| `summary` | — | Compact project overview: entity counts, map names, switch/variable totals |
 
----
+`data_type` enum: `Actors` `Classes` `Skills` `Items` `Weapons` `Armors` `Enemies` `Troops` `States` `Animations` `Tilesets` `Maps` `CommonEvents`
 
-#### Map Tile Painting
-
-| Tool | Key inputs |
-|---|---|
-| `read-map-tiles` | `map_id` · `x?` · `y?` · `width?` · `height?` · `layers? [0-5]` |
-| `paint-map-tiles` | `map_id` · `tiles [{x, y, layer, tile_id}]` |
-| `fill-map-region` | `map_id` · `x` · `y` · `width` · `height` · `layer` · `tile_id` |
-| `paint-map-region` | `map_id` · `layer` · `x` · `y` · `width` · `height` · `tile_id` or `tiles [flat array]` |
-
-Tile index formula: `x + y × mapWidth + layer × mapWidth × mapHeight`. Layers: 0–3 = tile layers (0 = empty, valid IDs ≥ 2048), 4 = shadow flags (0–15), 5 = region ID (0–255).
-
-**`read-map-tiles`** — Returns tile IDs for every cell in the requested region. Optionally filter by layer. Useful for understanding the current tile layout before painting.
-
-**`paint-map-tiles`** — Applies an array of individual tile changes atomically (one file write). Invalid entries are skipped and returned as warnings. Layer max IDs: layers 0–3 → 0–8191, layer 4 → 0–15, layer 5 → 0–255.
-
-**`fill-map-region`** — Fills a rectangle with a single tile ID across any layer. `tile_id=0` clears the region. Clamped to map bounds.
-
-**`paint-map-region`** — Single-layer region paint with two modes: **fill** (`tile_id` — fills the entire rectangle with one tile) or **stamp** (`tiles` — flat row-major array of exactly `width×height` IDs). Stamp mode is the efficient path for placing pre-designed tile patterns like room templates or dungeon prefabs.
+`resources` categories: `characters` `faces` `battlers` `sv_actors` `tilesets` `parallaxes` `pictures` `bgm` `bgs` `se` `me` `all`
 
 ---
 
-#### Tilesets
+#### `game-entity` — Create, edit, delete, and duplicate entities
 
-| Tool | Key inputs |
-|---|---|
-| `read-tileset` | `tileset_id?` · `include_flags?` |
-| `create-tileset` | `name` · `mode?` · `tilesetNames? [9 entries]` |
-| `edit-tileset-properties` | `tileset_id` · `name?` · `mode?` · `tilesetNames? [9 entries]` |
-| `edit-tileset` | `tileset_id` · `flag_overrides [{tile_id, passable?, terrain_tag?}]` |
+Manages all RPG database entities. Pass `action: "create"` to add a new entry (omit the ID); pass `action: "edit"` with an ID to update an existing one.
 
-**`read-tileset`** — Reads tileset metadata: name, mode, graphic file references (`tilesetNames` array of 9 slots: A1 A2 A3 A4 A5 B C D E), and a passability flag summary. Pass `include_flags: true` to get the full 8192-entry flags array. Omit `tileset_id` to list all tilesets.
+| `action` | `type` values | Key `data` fields |
+|---|---|---|
+| `create` | actor, item, weapon, armor, skill, class, state, enemy, troop, common-event, animation, tileset | `name` (required) + type-specific fields |
+| `edit` | same as above | `<type>_id` + fields to update |
+| `delete` | same as above | `entity_type`, `entity_id`, `confirm: true` |
+| `duplicate` | same as above | `entity_type`, `entity_id`, `new_name` |
+| `generate` | character | `name`, `archetype (warrior\|mage\|rogue\|healer\|paladin\|ranger)` |
+| `traits` | actor, class, enemy, weapon, armor, state | `entity_id`, `mode (replace\|append\|clear)`, `traits [{code,data_id,value}]` |
+| `effects` | skill, item | `entity_id`, `mode`, `effects [{code,data_id,value1,value2}]` |
+| `class-learnings` | class | `class_id`, `mode (replace\|append\|remove_at_level)`, `learnings [{level,skill_id}]` |
+| `enemy-actions` | enemy | `enemy_id`, `mode`, `actions [{skill_id,rating,condition_type,...}]` |
+| `drop-items` | enemy | `enemy_id`, `mode`, `drops [{kind,data_id,denominator}]` |
+| `character` | (system) | `vehicle (boat\|ship\|airship)` + optional sprite/BGM/start position |
+| `system` | (system) | Global settings: `game_title`, `currency_unit`, `initial_party`, `start_map_id/x/y`, `switch_names`, `variable_names`, audio fields, option flags |
 
-**`create-tileset`** — Creates a new tileset entry in `Tilesets.json`. All 8192 tile flags default to passable (0). `tilesetNames` is an array of 9 graphic file names (without extension) from `img/tilesets/`; omit for a blank tileset.
+`generate` builds a complete actor from a high-level archetype. It reads the project's classes, weapons, and armors and picks the best fit via keyword matching. Returns `{ actor_id, class_id, equips, sprite }`.
 
-**`edit-tileset-properties`** — Edits a tileset's display name, mode (`0`=World / `1`=Area), or the 9-slot `tilesetNames` graphic references. To edit passability and terrain tags use `edit-tileset`.
-
-**`edit-tileset`** — Modify the passability and terrain tag of one or more tiles in a tileset. Each entry in `flag_overrides` targets a single `tile_id` (0–8191). `passable: false` blocks all four directions; `terrain_tag` (0–7) is stored in bits 12–15 of the flag word.
-
----
-
-#### Plugins
-
-| Tool | Key inputs |
-|---|---|
-| `create-plugin` | `plugin_name` · `description` · `author` · `version` · `code_type (empty\|simple-hook\|command\|skill-modifier)` |
-| `create-plugin-advanced` | `plugin_name` · `template_type (with-parameters\|game-actor\|game-enemy\|event-handler\|custom-ui)` |
-| `setup-debug-plugin` | *(no input)* — installs the runtime bridge plugin and registers all existing plugins |
-| `manage-plugins` | `action (list\|enable\|disable\|delete)` · `plugin_name?` |
-
-`setup-debug-plugin` writes `RPGMakerDebugger.js` into `js/plugins/`, registers it in `plugins.js` (enabled), and also registers any other `.js` files already in the folder (disabled) so they appear in the Plugin Manager. Safe to call multiple times — existing plugins are never overwritten.
-
-**`manage-plugins`** — `list` returns all registered plugins with name/status/description. `enable`/`disable` toggle a plugin's active state. `delete` removes it from the registry and deletes the `.js` file if present.
-
-Plugin filenames are sanitized on write: names with `<>:"/\|?*`, path separators, or Windows reserved names (CON, NUL, COM1…) are rejected.
-
-| Tool | Key inputs |
-|---|---|
-| `edit-plugin-parameters` | `plugin_name` · `parameters {key: "value", …}` |
-| `reorder-plugin` | `plugin_name` · `position (first\|last\|before\|after)` · `relative_plugin?` |
-
-**`edit-plugin-parameters`** — Update individual parameter values of a registered plugin. RPG Maker MZ stores all plugin parameter values as strings. Partial updates are supported — only the keys you provide are changed; all other parameters are preserved.
-
-**`reorder-plugin`** — Change the load order of a plugin in `js/plugins.js`. `position: "before"` and `"after"` require `relative_plugin` to specify the reference plugin. Plugin load order is critical in RPG Maker MZ — compatibility layers must load before the plugins they extend.
-
-> **Note:** Plugin tools are only available for **MZ/MV** engines. For VX Ace/VX/XP, use the Script tools below.
+`delete` creates a backup before nulling the entity slot. The index is preserved — equivalent to the RPG Maker editor's delete behavior.
 
 ---
 
-#### Scripts *(VX Ace / VX / XP only)*
+#### `game-map` — All map and tileset operations
 
-In RPG Maker VX Ace/VX/XP, game code lives in `Scripts.rvdata2` as a list of Ruby scripts. These tools are the Ruby-engine equivalent of the plugin tools.
+| `action` | Key `data` fields | Description |
+|---|---|---|
+| `create` | `name`, `map_id?`, `width?`, `height?`, `tileset_id?`, `parent_id?` | Create a new empty map |
+| `edit` | `map_id`, `name?`, `tileset_id?`, `encounters?`, BGM/BGS/parallax fields | Edit map properties |
+| `delete` | `map_id`, `confirm: true` | Delete map file and null MapInfos entry |
+| `copy` | `source_map_id`, `new_name`, `parent_id?` | Duplicate a map with tiles and events |
+| `edit-info` | `map_id`, `name?`, `parent_id?`, `order?`, `expanded?` | Edit MapInfos metadata only (no map file I/O) |
+| `read-tiles` | `map_id`, `x?`, `y?`, `width?`, `height?`, `layers?` | Read tile IDs for a region |
+| `paint-tiles` | `map_id`, `tiles [{x,y,layer,tile_id}]` | Apply individual tile changes atomically |
+| `fill` | `map_id`, `x`, `y`, `width`, `height`, `layer`, `tile_id` | Fill a rectangle with one tile ID |
+| `paint-region` | `map_id`, `layer`, `x`, `y`, `width`, `height`, `tile_id` or `tiles [flat array]` | Fill or stamp a tile region |
+| `create-event` | `map_id`, `event_name`, `x`, `y`, `event_type`, `pages` | Create a new map event |
+| `edit-event` | `map_id`, `event_id`, `name?`, `x?`, `y?`, `append_commands?` | Edit an existing event |
+| `delete-event` | `map_id`, `event_id` | Null the event slot |
+| `edit-event-page` | `map_id`, `event_id`, `mode (add\|replace\|remove)`, `page_index?`, `page?` | Add, replace, or remove an event page |
+| `edit-troop-events` | `troop_id`, `mode (replace_all\|append\|clear)`, `pages [{conditions,span,commands}]` | Edit battle event pages in a troop |
+| `create-tileset` | `name`, `mode?`, `tilesetNames? [9 entries]` | Create a new tileset entry |
+| `edit-tileset` | `tileset_id`, `flag_overrides [{tile_id,passable?,terrain_tag?}]` | Edit tile passability and terrain tags |
+| `edit-tileset-properties` | `tileset_id`, `name?`, `mode?`, `tilesetNames?` | Edit tileset name, mode, and graphic references |
 
-| Tool | Key inputs |
-|---|---|
-| `list-scripts` | *(no input)* — returns `[{id, name}]` for all scripts |
-| `read-script` | `id?` · `name?` — returns `{id, name, source}` |
-| `create-script` | `name` · `source` — appends a new script, returns `script_id` |
-| `edit-script` | `id` · `name?` · `source?` — update name and/or source |
-| `delete-script` | `id` · `confirm: true` — removes a script by ID |
+Tile layers: 0–3 = tile layers (IDs >= 2048), 4 = shadow flags (0–15), 5 = region ID (0–255).
 
-> **Note:** Script tools are only available for **VX Ace/VX/XP** engines. They return a clear error on MZ/MV.
-
----
-
-#### Animations
-
-| Tool | Key inputs |
-|---|---|
-| `read-animation` | `animation_id?` |
-| `edit-animation` | `animation_id` · `name?` · `effect_name?` · `display_type?` · `offset_x?` · `offset_y?` · `speed?` |
-
-**`read-animation`** — Returns the full animation object (name, effectName, displayType, flashTimings, soundTimings, offsetX/Y, speed) when `animation_id` is given. Omit to list all animations with id and name.
-
-**`edit-animation`** — Edits animation metadata. `effect_name` references an Effekseer `.efkefc` file from the `effects/` folder (without extension). `display_type`: 0=target head, 1=target center, 2=full screen, -1=front of screen. Full frame/timing editing is out of scope.
-
----
-
-#### Entity Creation
-
-All `edit-X` tools create a new entity when the `*_id` field is omitted. The dedicated create tools below offer stricter schemas with required `name`, explicit defaults, and return the new ID immediately.
-
-| Tool | Description |
-|---|---|
-| `create-actor` | Create a new actor with class, levels, sprite, equips, and profile |
-| `create-item` | Create a new item (consumable or key item) |
-| `create-weapon` | Create a new weapon with weapon type and stat bonuses |
-| `create-armor` | Create a new armor with armor/equipment type and stat bonuses |
-| `create-skill` | Create a new skill with costs, scope, damage, and animation |
-| `create-class` | Create a new class with exp curve and initial learnings |
-| `create-state` | Create a new state with restriction, duration, and removal conditions |
-| `create-enemy` | Create a new enemy with stats, drops, and battle actions |
-| `create-animation` | Create a new animation entry (metadata only; frame data authored separately) |
-
-All create tools return `{ success, <type>_id, name }`.
+Event commands use `{ type, data }` format. Supported types include: `message`, `choice`, `conditional-branch`, `loop`, `switch`, `variable`, `transfer`, `script`, `battle`, `common-event`, `play-bgm`, `play-se`, `show-picture`, `wait`, and 20+ more. See EXAMPLES.md for full reference.
 
 ---
 
-#### Utility Tools
+#### `dialogue-tools` — Dialogue and story authoring
 
-| Tool | Key inputs |
-|---|---|
-| `search-entity` | `entity_type` · `query (substring search on name)` |
-| `duplicate-entity` | `entity_type` · `entity_id` · `new_name` |
-| `export-project-summary` | *(no required input)* |
-| `edit-map-info` | `map_id` · `name?` · `parent_id?` · `order?` · `expanded?` |
-| `validate-project` | `entity_types?` · `include_warnings?` |
-| `find-and-replace` | `find` · `replace` · `targets?` · `confirm: true` |
-| `copy-map` | `source_map_id` · `new_name` · `parent_id?` |
-| `cleanup-project` | `entity_types?` |
-| `batch-update-entities` | `entity_type` · `entity_ids [array]` · `updates {object}` · `confirm: true` |
-| `export-dialogue` | `include_maps?` · `include_common_events?` · `map_ids?` |
-| `import-dialogue` | `entries [array]` · `confirm: true` |
+| `action` | Key `data` fields | Description |
+|---|---|---|
+| `add` | `dialogue_lines [{speaker?,text}]`, `event_name?` | Add dialogue to an event (simple) |
+| `create-advanced` | `dialogue_name`, `dialogue_nodes` | Create a branching dialogue tree with choices, conditions, and actions |
+| `generate-story` | `story_title`, `story_description`, `scenes` | Generate a full multi-scene story with maps and events |
+| `export` | `include_maps?`, `include_common_events?`, `map_ids?` | Export all dialogue text to structured JSON |
+| `import` | `entries [array]`, `confirm: true` | Write translated/modified dialogue back into the project |
 
-**`search-entity`** — Case-insensitive substring search across any entity type (Actor, Item, Weapon, Armor, Skill, Class, State, Enemy, Troop, CommonEvent, Animation, Tileset). Returns `{ matches: [{id, name}] }`.
-
-**`duplicate-entity`** — Clone an entity with a new name and next available ID. The duplicate gets all fields copied from the source (except id). Returns `{ success, new_id, name }`.
-
-**`export-project-summary`** — Returns a compact overview of the whole project: actor/enemy/skill counts, map names, switch and variable totals. Useful for getting oriented in an unfamiliar project.
-
-**`edit-map-info`** — Edit only the MapInfos.json metadata entry (name, parent, order, scroll) without touching the map tile/event file.
-
-**`validate-project`** — Run all entity validators across the entire project and return a structured report. Returns `{ valid, total_checked, total_errors, total_warnings, issues: [{entity_type, id, name, errors[], warnings[]}] }`. Filter with `entity_types` to limit scope.
-
-**`find-and-replace`** — Bulk search and replace text across entity names, notes, and event command text in all data files and map files. `targets`: `"names"` `"notes"` `"event_commands"` (default: all three). Requires `confirm: true`. Returns `{ total_replacements, files_changed[] }`.
-
-**`copy-map`** — Duplicate an existing map (tiles + events) with a new name and the next available ID. Automatically adds the new entry to `MapInfos.json`. Returns `{ new_map_id, name, copied_from }`.
-
-**`cleanup-project`** — Read-only audit of null slots in entity JSON arrays. Reports `{ null_slots, active_entities, total_slots }` per entity type. Does NOT rewrite files or reassign IDs.
-
-**`batch-update-entities`** — Apply the same field updates to multiple entities of the same type in one call. Useful for bulk balancing: set HP on 10 enemies, rename a group of items, etc. Supported types include all entity types: `Actor` `Item` `Weapon` `Armor` `Skill` `Class` `State` `Enemy` `Troop` `CommonEvent` `Animation` `Tileset`. Returns `{ results: [{id, success}] }`. Requires `confirm: true`.
-
-**`export-dialogue`** — Extract all dialogue text from map events and common events into a structured JSON. Each entry contains `source_type`, `source_id`, `event_id`, `page`, `command_index`, `speaker`, and `lines[]`. Primary use case: prepare text for translation.
-
-**`import-dialogue`** — Write translated/modified dialogue back into the project. Matches entries by `source_id`, `event_id`, `page`, and `command_index` from `export-dialogue`. Line count per entry must match the original. Requires `confirm: true`.
+`export` produces entries with `source_type`, `source_id`, `event_id`, `page`, `command_index`, `speaker`, and `lines[]`. Primary use: translation workflows. `import` matches by those same fields — line count must match the original.
 
 ---
 
-#### Runtime Control
+#### `battle-sim` — Battle simulation
 
-These tools control the **running game** in real time. They work on all five supported engines:
-
-**MZ / MV** — uses an HTTP bridge (port 9001). Setup:
-1. `setup-debug-plugin` installs `RPGMakerDebugger.js` into the project
-2. Enable the plugin in RPG Maker MZ Plugin Manager
-3. Press Play / F5 — the plugin polls the MCP server every 500 ms
-
-**VX Ace / VX / XP** — uses a TCP socket bridge (port 9002). Setup:
-1. `setup-debug-plugin` injects `RpgMakerMCPBridge` into `Scripts.rvdata2`
-2. Close and reopen the project in RPG Maker so it picks up the script
-3. Press Play — the script starts a TCP server on port 9002 inside the game
-
-You can change the port with `RUBY_BRIDGE_PORT` in `.env` (default: `9002`).
-
-| Tool | Description |
-|---|---|
-| `launch-game` | Launch the RPG Maker MZ executable |
-| `get-game-state` | Read current map, player position, party HP/levels, gold |
-| `get-switch` | Read the current ON/OFF value of a game switch (`id`) |
-| `get-variable` | Read the current numeric value of a game variable (`id`) |
-| `set-switch` | Turn a game switch ON or OFF (`id`, `value`) |
-| `set-variable` | Assign a value to a game variable (`id`, `value`) |
-| `get-inventory` | Read the current party inventory (`category?: items\|weapons\|armors\|all`) |
-| `modify-inventory` | Add or remove items/weapons/armors/gold (`operations [{action,type,id?,amount}]`) |
-| `call-common-event` | Trigger a common event by ID (`common_event_id`) |
-| `modify-actor-runtime` | Change an actor's level/exp/HP/MP/TP while the game is running |
-| `teleport-player` | Move the player to any map and coordinates (`map_id`, `x`, `y`, `direction?`) |
-| `save-game` | Save to a slot (`slot`, default 98 — recommended for test snapshots) |
-| `load-game` | Load from a slot (`slot`, default 98) — waits for the map to reload before returning |
-| `set-party-state` | Set HP/MP % and add/remove status effects for one actor or the whole party |
-| `start-encounter` | Trigger a battle (`troop_id` or `enemy_id` + `count` + optional `actions` turn plan) |
-| `run-battle-suite` | Run the same battle N times and return aggregated stats: win rate, avg HP, damage dealt/taken |
-| `execute-script` | Evaluate arbitrary JavaScript in the running game (`code`, `timeout?`) |
-| `show-message` | Display a message in the game's message window (`text`, `speaker?`) |
-| `get-actor-runtime` | Read a single actor's live state: level, HP, MP, TP, states, equipment, skills |
-| `manage-party-runtime` | `action (get\|add\|remove)` · `actor_id?` — read party list or add/remove member |
-| `control-weather-runtime` | `type (none\|rain\|storm\|snow)` · `power (0-9)` · `duration?` |
-| `play-audio-runtime` | `action (bgm\|bgs\|se\|me\|stop_bgm\|stop_bgs\|stop_se)` · `name?` · `volume?` · `pitch?` · `pan?` |
-| `get-map-state-runtime` | Read current map dimensions, player position, and active weather |
-| `control-timer-runtime` | `action (start\|stop\|get)` · `frames?` (required for start) |
-| `get-battle-state-runtime` | *(no required input — must be in battle)* |
-
-**`get-switch`** / **`get-variable`** — Return `{ id, value, name? }`. Name is read from `System.json` if defined.
-
-**`get-inventory`** — Returns `{ items: [{id,name,count}], weapons: [...], armors: [...], gold: number }`. Only the requested `category` is populated.
-
-**`modify-inventory`** — `type`: `item` `weapon` `armor` `gold`. For gold, omit `id`. Multiple operations are batched into a single script call.
-
-**`call-common-event`** — Validates the event exists in `CommonEvents.json` before executing. Logs to change log.
-
-**`modify-actor-runtime`** — `field`: `level` `exp` `hp` `mp` `tp`. `mode`: `set` (assign directly) or `add` (delta). Multiple operations per call.
-
-**`control-timer-runtime`** — Start, stop, or query the in-game countdown timer. `action: "get"` returns `{ working, seconds }`. `action: "start"` requires `frames` (60 frames = 1 second). Uses `waitForAck` for write actions, `waitForGameState` for get.
-
-**`get-battle-state-runtime`** — Read current battle state while in a battle: `{ in_battle, turn, enemies: [{id,name,hp,mhp,mp,alive,states}], party: [{id,name,hp,mhp,mp,alive}] }`. Returns `in_battle: false` when not in battle.
-
-**Typical workflow:**
-
-```
-1. setup-debug-plugin              ← install once per project
-2. launch-game                     ← start the game
-3. get-game-state                  ← confirm connection and read initial state
-4. get-switch / get-variable       ← read current flag/counter values
-5. set-switch / set-variable       ← configure game flags for the scenario to test
-6. get-inventory                   ← inspect party items before test
-7. modify-inventory                ← add test items / gold
-8. teleport-player                 ← jump to the area under test
-9. modify-actor-runtime            ← set actor level/HP/TP for the scenario
-10. set-party-state                ← configure HP/MP/states
-11. call-common-event              ← trigger a setup event if needed
-12. start-encounter                ← run a battle and get the full log
-13. run-battle-suite               ← repeat N times for statistical analysis
-14. save-game / load-game          ← snapshot and restore state for reproduction
-```
+| `action` | Key `data` fields | Description |
+|---|---|---|
+| `encounter` | `troop_id` or `enemy_id` + `count`, `actions?` | Trigger a single battle with an optional turn plan |
+| `suite` | `troop_id` or `enemy_id`, `runs`, `actions?` | Run the same battle N times; returns win rate, avg HP, damage dealt/taken |
 
 ---
 
-#### Backups
+#### `project-tools` — Project maintenance and batch operations
 
-| Tool | Key inputs |
-|---|---|
-| `manage-backups` | `action (list\|restore\|delete\|prune)` · `filename?` · `backup_name?` · `max_count?` |
+| `action` | Key `data` fields | Description |
+|---|---|---|
+| `validate` | `entity_types?`, `include_warnings?` | Run all validators; returns structured report with errors and warnings |
+| `cleanup` | `entity_types?` | Read-only audit of null slots in entity arrays |
+| `find-replace` | `find`, `replace`, `targets?`, `confirm: true` | Bulk search and replace across names, notes, and event command text |
+| `batch-update` | `entity_type`, `entity_ids [array]`, `updates {object}`, `confirm: true` | Apply the same field changes to multiple entities |
+| `batch-create` | `entity_type`, `entities [array]` (max 50) | Create multiple entities of the same type atomically |
+| `batch-delete` | `entity_type`, `entity_ids [array]` (max 100), `confirm: true` | Null multiple entity slots in one call |
+| `history` | `limit?`, `entity_type?`, `action?`, `since?` | Query the audit change log |
 
-Backups are created automatically before every write and stored in `<project>/backups/`. The `BACKUP_MAX_COUNT` env var (default `10`) controls how many are kept per file.
+`validate` returns `{ valid, total_checked, total_errors, total_warnings, issues: [{entity_type, id, name, errors[], warnings[]}] }`.
+
+`find-replace` targets: `"names"` `"notes"` `"event_commands"` (default: all three). Returns `{ total_replacements, files_changed[] }`.
 
 ---
 
-#### Batch Operations
+#### `plugin-manage` — Plugin management (MZ/MV) and Script management (Ruby engines)
 
-| Tool | Key inputs |
+**MZ / MV:**
+
+| `action` | Key `data` fields | Description |
+|---|---|---|
+| `create` | `plugin_name`, `description`, `author`, `version`, `code_type` | Create a new plugin from a template |
+| `create-advanced` | `plugin_name`, `template_type` | Create a plugin using a specialized template |
+| `manage` | `action (list\|enable\|disable\|delete)`, `plugin_name?` | List or toggle plugins |
+| `edit-parameters` | `plugin_name`, `parameters {key: "value", …}` | Update plugin parameter values (all values are strings in MZ) |
+| `reorder` | `plugin_name`, `position (first\|last\|before\|after)`, `relative_plugin?` | Change plugin load order |
+
+**VX Ace / VX / XP** (Ruby engines use scripts, not plugins):
+
+| `action` | Key `data` fields | Description |
+|---|---|---|
+| `list-scripts` | — | Return `[{id, name}]` for all scripts |
+| `read-script` | `id?` or `name?` | Return `{id, name, source}` |
+| `create-script` | `name`, `source` | Append a new script; returns `script_id` |
+| `edit-script` | `id`, `name?`, `source?` | Update script name and/or source |
+| `delete-script` | `id`, `confirm: true` | Remove a script by ID |
+
+Plugin filenames are sanitized on write — names with `<>:"/\|?*`, path separators, or Windows reserved names are rejected.
+
+---
+
+#### `game-setup` — Health check and game launch
+
+| `action` | Key `data` fields | Description |
+|---|---|---|
+| `health-check` | — | Server liveness check: status, engine, project path, timestamp |
+| `setup-debug` | — | Install the runtime bridge plugin/script into the project |
+| `launch` | — | Launch the RPG Maker executable |
+
+`setup-debug` on MZ/MV writes `RPGMakerDebugger.js` into `js/plugins/` and registers it. On VX Ace/VX/XP it injects `RpgMakerMCPBridge` into `Scripts.rvdata2`. Safe to call multiple times — existing plugins/scripts are never overwritten.
+
+---
+
+#### `manage-backups` — Backup management
+
+Uses flat fields directly (no `data` wrapper):
+
+| Field | Description |
 |---|---|
-| `batch-edit` | `operations [{tool, input}]` (max 50) · `stop_on_error?` |
-| `batch-create-entities` | `entity_type (Actor\|Item\|Weapon\|Armor\|Skill\|Class\|State\|Enemy\|Troop\|CommonEvent\|Animation\|Tileset)` · `entities [array of entity objects]` (max 50) |
-| `batch-delete-entities` | `entity_type` · `entity_ids [array of integers]` (max 100) · `confirm: true` |
+| `action (list\|restore\|delete\|prune)` | Operation to perform |
+| `filename?` | Filter by source file |
+| `backup_name?` | Target a specific backup file |
+| `max_count?` | Prune to this many backups per file |
 
-**`batch-edit`** — Executes multiple tool calls in a single MCP round-trip. Each operation runs in order; failures are reported per-operation and do not block the rest (unless `stop_on_error: true`).
+Backups are created automatically before every write and stored in `<project>/backups/`. The `BACKUP_MAX_COUNT` env var (default `10`) controls retention. For Ruby engines, backups are binary copies of the Marshal files.
 
-**`batch-create-entities`** — Create multiple entities of the same type atomically. Each object in `entities` needs at least `name`. Supported types: `Actor` `Item` `Weapon` `Armor` `Skill` `Class` `State` `Enemy` `Troop` `CommonEvent` `Animation` `Tileset`. Returns `{ results: [{index, success, id}] }`.
+---
 
-**`batch-delete-entities`** — Null out multiple entities in one operation. Supports all entity types including Animation, Troop, CommonEvent, and Tileset. Requires `confirm: true`. Returns per-ID success/error.
+#### `batch-edit` — Escape hatch for multi-step operations
+
+Executes multiple internal handler calls in a single MCP round-trip. Each operation runs in order; failures are reported per-operation and do not block the rest (unless `stop_on_error: true`).
 
 ```json
 {
@@ -637,24 +369,58 @@ Backups are created automatically before every write and stored in `<project>/ba
     { "tool": "edit-actor", "input": { "actor_id": 1, "name": "Aria" } },
     { "tool": "edit-item",  "input": { "name": "Mana Potion", "price": 150 } },
     { "tool": "set-switch", "input": { "id": 5, "value": true } }
-  ]
+  ],
+  "stop_on_error": false
 }
 ```
 
+Maximum 50 operations per call. Nested `batch-edit` calls are rejected. Use this when a workflow doesn't map cleanly to a single macro.
+
 ---
 
-### Examples
+### Runtime Bridge Setup
 
-You never write JSON directly — just describe what you want in plain language and the AI handles the rest. See **[EXAMPLES.md](EXAMPLES.md)** for natural-language prompts and the equivalent JSON for every tool, in English and Spanish.
+#### MZ / MV — HTTP bridge (port 9001)
+
+1. Call `game-setup` with `action: "setup-debug"` — installs `RPGMakerDebugger.js`
+2. Enable the plugin in the RPG Maker Plugin Manager
+3. Press Play / F5 — the plugin polls the MCP server every 500 ms
+
+#### VX Ace / VX / XP — TCP bridge (port 9002)
+
+1. Call `game-setup` with `action: "setup-debug"` — injects `RpgMakerMCPBridge` into `Scripts.rvdata2`
+2. Close and reopen the project in RPG Maker so it picks up the new script
+3. Press Play — the script starts a TCP server on port 9002 inside the game
+
+You can change the Ruby bridge port with `RUBY_BRIDGE_PORT` in `.env` (default: `9002`).
+
+**Typical runtime workflow:**
+
+```
+1. game-setup (setup-debug)        ← install once per project
+2. game-setup (launch)             ← start the game
+3. runtime-inspect (game-state)    ← confirm connection and read initial state
+4. runtime-inspect (switch/variable) ← read current flag/counter values
+5. runtime-control (set-switch/set-variable) ← configure flags for the scenario
+6. runtime-inspect (inventory)     ← inspect party items before test
+7. runtime-control (modify-inventory) ← add test items / gold
+8. runtime-control (teleport)      ← jump to the area under test
+9. runtime-control (modify-actor)  ← set actor level/HP/TP for the scenario
+10. runtime-control (set-party-state) ← configure HP/MP/states
+11. runtime-control (call-common-event) ← trigger a setup event if needed
+12. battle-sim (encounter)         ← run a battle and get the full log
+13. battle-sim (suite)             ← repeat N times for statistical analysis
+14. runtime-control (save/load)    ← snapshot and restore state for reproduction
+```
 
 ---
 
 ### Change Log
 
-Every successful write appends an entry to `<project>/mcp-changes.json`. Use `get-change-history` to query it:
+Every successful write appends an entry to `<project>/mcp-changes.json`. Query it via `project-tools` with `action: "history"`:
 
 ```json
-{ "tool": "get-change-history", "input": { "action": "create", "limit": 20 } }
+{ "action": "history", "data": { "action": "create", "limit": 20 } }
 ```
 
 Entry fields: `timestamp` · `tool` · `entityType` · `entityId` · `action` · `summary`
@@ -663,7 +429,7 @@ Entry fields: `timestamp` · `tool` · `entityType` · `entityId` · `action` ·
 
 ### Examples
 
-See **[EXAMPLES.md](EXAMPLES.md)** for natural-language prompts and JSON reference inputs for every tool — in English and Spanish.
+You never write JSON directly — just describe what you want in plain language and the AI handles the rest. See **[EXAMPLES.md](EXAMPLES.md)** for natural-language prompts and the equivalent JSON for every macro, in English and Spanish.
 
 ---
 
@@ -675,7 +441,7 @@ npm run test:watch        # watch mode
 npm run test:coverage     # with v8 coverage report
 ```
 
-640+ tests across 32 suites (coverage excludes `src/index.ts`, `src/tools/**`, `src/templates/**`).
+810+ tests across 43 suites (coverage excludes `src/index.ts`, `src/adapters/mz/tools/**`, `src/adapters/mz/templates/**`).
 
 ---
 
@@ -687,10 +453,10 @@ npm run test:coverage     # with v8 coverage report
 | `RPG Maker project path does not exist` | Verify the path; use forward slashes on Windows too |
 | `RPG Maker data directory not found` | The project root must contain a `data/` folder |
 | `Invalid plugin filename` | Plugin names must not contain `<>:"/\|?*` or path separators |
-| `mapInfo is missing required fields` | Pass all 7 fields when providing mapInfo to `create-map-event` |
-| `Game not connected` (MZ/MV) | Launch the game with the RPGMakerDebugger plugin enabled; wait for the map to load |
-| `Ruby bridge not available` (VX Ace) | Run `setup-debug-plugin` first, reopen the project, press Play, and wait for the map to load |
-| Runtime tool times out | The game may be on the title screen — enter the map first; or the bridge script is not running |
+| `mapInfo is missing required fields` | Pass all 7 required fields when providing mapInfo to `game-map` create |
+| `Game not connected` (MZ/MV) | Launch the game with RPGMakerDebugger plugin enabled; wait for the map to load |
+| `Ruby bridge not available` (VX Ace/VX/XP) | Run `game-setup (setup-debug)` first, reopen the project, press Play, and wait for the map to load |
+| Runtime tool times out | The game may be on the title screen — enter a map first; or the bridge script is not running |
 | Ruby bridge port conflict | Change `RUBY_BRIDGE_PORT` in `.env` to an unused port (default: 9002) |
 | Server hangs | `Ctrl+C`, verify the project path is accessible, restart with `npm run dev` |
 
@@ -700,11 +466,13 @@ npm run test:coverage     # with v8 coverage report
 
 ### Qué hace
 
-RPG Maker AI Toolkit expone tu proyecto como un conjunto de herramientas que un asistente IA puede llamar. En lugar de describir lo que quieres y copiar archivos a mano, simplemente pides al agente que lo haga — con backups automáticos, validación y un historial de cambios completo.
+RPG Maker AI Toolkit expone tu proyecto como **12 herramientas macro** que un asistente IA puede llamar. En lugar de describir lo que quieres y copiar archivos a mano, simplemente pides al agente que lo haga — con backups automáticos, validación y un historial de cambios completo.
+
+La arquitectura usa 12 macros de alto nivel expuestas al LLM, respaldadas por ~110 handlers internos. Un escape hatch `batch-edit` está disponible para operaciones multi-paso que necesitan acceso directo a los handlers.
 
 Compatible con **todos los engines principales**: MZ, MV (formato JSON) y VX Ace, VX, XP (formato Ruby Marshal con bridge integrado).
 
-Ahora incluye **bridge de control en tiempo real** para todos los engines: HTTP (port 9001) para MZ/MV, y socket TCP (port 9002) para VX Ace/VX/XP. Instala el bridge una vez y el agente puede leer el estado del juego, activar switches, cambiar variables, teleportar al jugador y desencadenar batallas mientras el juego está corriendo.
+Incluye **bridge de control en tiempo real** para todos los engines: HTTP (puerto 9001) para MZ/MV y socket TCP (puerto 9002) para VX Ace/VX/XP. Instala el bridge una vez y el agente puede leer el estado del juego, activar switches, cambiar variables, teleportar al jugador y desencadenar batallas mientras el juego está corriendo.
 
 ### Requisitos
 
@@ -737,7 +505,7 @@ RPGMAKER_PROJECT_PATH=C:\Users\tú\Documentos\MiJuego
 # Obligatorio — engine: mz (por defecto) | mv | vxace | vx | xp
 RPGMAKER_ENGINE=mz
 
-# Opcional — ruta al ejecutable RPG Maker MZ (solo para launch-game, MZ)
+# Opcional — ruta al ejecutable RPG Maker (para game-setup con action: launch)
 RPGMAKER_EXECUTABLE_PATH=C:\Program Files\RPG Maker MZ\RPGMakerMZ.exe
 
 # Opcional — ruta a Ruby (necesario para vxace / vx / xp)
@@ -772,333 +540,235 @@ npm run build && npm start   # producción
 }
 ```
 
+### Compatibilidad de engines
+
+| Engine | Formato | `RPGMAKER_ENGINE` | Bridge en tiempo real |
+|---|---|---|---|
+| RPG Maker MZ | JSON | `mz` (por defecto) | Sí — HTTP (puerto 9001) |
+| RPG Maker MV | JSON | `mv` | Sí — HTTP (puerto 9001) |
+| RPG Maker VX Ace | `.rvdata2` (Marshal) | `vxace` | Sí — TCP (puerto 9002) |
+| RPG Maker VX | `.rvdata` (Marshal) | `vx` | Sí — TCP (puerto 9002) |
+| RPG Maker XP | `.rxdata` (Marshal) | `xp` | Sí — TCP (puerto 9002) |
+
+---
+
 ### Herramientas disponibles
 
-#### Datos y sistema
+El LLM ve **12 herramientas macro** más `batch-edit`. Cada macro acepta `{ action, data }` donde `data` lleva los campos específicos de cada acción. Excepciones: `runtime-control` y `runtime-inspect` usan campos directos en el nivel superior; `manage-backups` también usa campos directos.
 
-| Herramienta | Descripción |
-|---|---|
-| `health-check` | Comprueba que el servidor está activo |
-| `list-game-data` | Lista entidades por tipo con nombres e IDs |
-| `list-maps` | Lista todos los mapas de MapInfos.json ordenados por posición de visualización |
-| `read-map` | Lee metadatos del mapa, lista de eventos y encuentros |
-| `read-entity` | Lee una entidad por tipo e ID |
-| `list-resources` | Lista archivos de assets en `img/` y `audio/` por categoría |
-| `delete-entity` | Anula una entidad en su array de base de datos (soft-delete con backup) |
-| `get-change-history` | Consulta el historial de escrituras MCP |
-| `edit-system` | Edita la configuración global: título, moneda, grupo inicial, posición de inicio, nombres de switches/variables, audio |
-| `read-system-extended` | Lee secciones extendidas de System.json: términos, vehículos, sonidos, configuración de ventana |
-
-**`list-resources`** — `category`: `characters` · `faces` · `battlers` · `sv_actors` · `tilesets` · `parallaxes` · `pictures` · `bgm` · `bgs` · `se` · `me` · `all`. Devuelve nombres de archivo sin extensión. Úsalo antes de asignar sprites/audio para evitar fallos silenciosos.
-
-**`delete-entity`** — `entity_type` · `entity_id` · `confirm: true` (obligatorio). Crea backup antes de anular. El índice se preserva — las referencias existentes quedan apuntando a null.
-
-**`edit-system`** — todos opcionales: `game_title` · `currency_unit` · `initial_party` · `start_map_id/x/y` · `switch_names {"id":"nombre"}` · `variable_names` · `title_bgm/battle_bgm/victory_me/defeat_me` · `opt_autosave` · `opt_display_tp` · `opt_slip_death` · `opt_floor_death` · `opt_follower_distance` · `opt_transparent`
-
-**`read-system-extended`** — `section`: `terms` `vehicles` `sounds` `basic` `all`. Solo lectura.
-
-#### Personajes y enemigos
-
-| Herramienta | Campos clave |
-|---|---|
-| `generate-character` | `name` · `archetype` · `nickname?` · `initial_level?` · `max_level?` · `character_name?` · `character_index?` · `face_name?` · `face_index?` · `profile?` · `note?` |
-| `edit-actor` | `actor_id?` · `name` · `nickname` · `class_id` · `initial_level` · `max_level` · `face.name` · `face.index` · `character.name` · `character.index` · `battler_name` · `equips [arma,escudo,cabeza,cuerpo,accesorio]` · `profile` · `note` |
-| `edit-enemy` | `enemy_id?` · `name` · `gold` · `exp` · `battler_name` · `battler_hue (0-360)` · `max_hp` · `max_mp` · `attack` · `defense` · `magic_attack` · `magic_defense` · `agility` · `luck` · `drops [{kind,data_id,denominator}]` · `note` |
-| `edit-drop-items` | `enemy_id` · `mode (replace\|append\|clear)` · `drops [{kind,data_id,denominator}]` |
-
-**`edit-actor`** — `equips` es un array de 5 IDs: `[arma_id, escudo_id, cabeza_id, cuerpo_id, accesorio_id]`. Usa `0` para slot vacío.
-
-**`edit-drop-items`** — `kind`: 0=ninguno, 1=ítem, 2=arma, 3=armadura. `denominator`: probabilidad 1-en-N (ej. `4` = 25%). Máximo 3 slots.
-
-**`generate-character`** — Genera un actor completo a partir de un concepto de alto nivel. Lee las clases, armas y armaduras del proyecto y elige las más adecuadas para el arquetipo indicado mediante coincidencia de palabras clave. El sprite y la cara se seleccionan automáticamente. Arquetipos: `warrior` · `mage` · `rogue` · `healer` · `paladin` · `ranger`. Devuelve `{ actor_id, class_id, equips, sprite }`.
-
-| `edit-enemy-actions` | `enemy_id` · `mode (replace\|append\|clear)` · `actions [{skill_id, rating, condition_type, condition_param1, condition_param2}]` |
-
-**`edit-enemy-actions`** — Edita la tabla de acciones (IA) de un enemigo. `rating` (1–9) = frecuencia relativa. `condition_type`: 0=siempre, 1=turno X/Y, 2=HP≤%, 3=MP≤%, 4=estado aplicado, 5=nivel grupo≥, 6=switch ON.
+Todas las herramientas devuelven JSON. Cada escritura exitosa crea un backup con timestamp y añade una entrada al historial de cambios.
 
 ---
 
-#### Traits y efectos
+#### `runtime-control` — Controlar el juego en ejecución
 
-| Herramienta | Campos clave |
-|---|---|
-| `edit-traits` | `entity_type (Actor\|Class\|Enemy\|Weapon\|Armor\|State)` · `entity_id` · `mode (replace\|append\|clear)` · `traits [{code, data_id, value}]` |
-| `edit-effects` | `entity_type (Skill\|Item)` · `entity_id` · `mode (replace\|append\|clear)` · `effects [{code, data_id, value1, value2}]` |
+Modifica el estado en vivo mientras el juego está corriendo. Requiere el bridge de debug configurado previamente (ver **Configuración del bridge** más abajo).
 
-**`edit-traits`** — Edita el array de traits de cualquier entidad que los tenga. `mode=append` hace merge por `code`+`data_id` (upsert). Códigos frecuentes: 11=tasa elemento, 13=tasa estado, 14=resistencia estado, 21=tasa parámetro, 31=elemento de ataque, 41=añadir tipo habilidad, 43=añadir habilidad, 51=equipar tipo arma.
-
-**`edit-effects`** — Edita los efectos de uso de habilidades e ítems. Códigos: 11=recuperar HP, 12=recuperar MP, 13=ganar TP, 21=añadir estado, 22=quitar estado, 31-34=buff/debuff, 41=aprender habilidad, 42=llamar evento común.
-
-#### Equipamiento e ítems
-
-| Herramienta | Campos clave |
-|---|---|
-| `edit-item` | `item_id?` · `name` · `description` · `price` · `icon_index` · `itype_id (1=ítem,2=clave)` · `consumable` · `scope (0-11)` · `occasion (0-3)` · `speed` · `success_rate` · `repeats` · `tp_gain` · `hit_type (0-2)` · `animation_id` · `note` |
-| `edit-weapon` | `weapon_id?` · `name` · `wtype_id` · bonificaciones de estadísticas |
-| `edit-armor` | `armor_id?` · `name` · `atype_id` · bonificaciones de estadísticas |
-
-Bonificaciones de estadísticas: `max_hp` · `max_mp` · `attack` · `defense` · `magic_attack` · `magic_defense` · `agility` · `luck`
-
-#### Habilidades, clases y estados
-
-| Herramienta | Campos clave |
-|---|---|
-| `edit-skill` | `skill_id?` · `name` · `mp_cost` · `tp_cost` · `scope` · `damage_type` · `stype_id` · `required_wtype_id1/2` · `tp_gain` · `repeats` · `hit_type` · `damage_formula` · `damage_element_id` · `damage_variance` · `damage_critical` · `note` |
-| `edit-class` | `class_id?` · `name` · parámetros de experiencia · `learnings_mode` · `learnings [{level,skill_id}]` · `note` |
-| `edit-state` | `state_id?` · `name` · `restriction` · `priority` · duraciones · `description` · `overlay (0-10)` · `motion (0-10)` · `remove_by_walking` · `steps_to_remove` · `note` |
-| `edit-class-learnings` | `class_id` · `mode (replace\|append\|remove_at_level)` · `learnings [{level,skill_id,note?}]` · `level?` |
-
-#### Tropas (formaciones de enemigos)
-
-| Herramienta | Campos clave |
-|---|---|
-| `create-troop` | `name` · `members [{enemy_id, x?, y?, hidden?}]` |
-| `edit-troop` | `troop_id` · `name?` · `members?` |
-
-**`create-troop`** — Crea una nueva entrada en `Troops.json`. `members` requerido (1–8 enemigos). Si se omite `x`/`y`, los enemigos se distribuyen automáticamente en la pantalla de batalla. Devuelve `{ success, troop_id, name, member_count }`.
-
-**`edit-troop`** — Renombra una tropa o reemplaza su lista de miembros completa.
-
-| `edit-troop-events` | `troop_id` · `mode (replace_all\|append\|clear)` · `pages [{conditions, span, commands}]` |
-
-**`edit-troop-events`** — Gestiona páginas de eventos de batalla. Condiciones: `turnValid`+`turnA`+`turnB` · `enemyValid`+`enemyIndex`+`enemyHp` · `actorValid`+`actorId`+`actorHp` · `switchValid`+`switchId`. `span`: 0=una vez/batalla, 1=una vez/turno, 2=cada momento.
-
-Tipos de comando exclusivos de batalla (solo válidos dentro de páginas de eventos de tropa): `change-enemy-hp` (331) · `change-enemy-mp` (332) · `change-enemy-state` (333) · `recover-all-enemies` (334) · `enemy-appear` (335) · `enemy-transform` (336) · `show-battle-animation` (337) · `force-action` (338). Consulta la sección inglesa para los parámetros completos.
-
-#### Eventos comunes
-
-| Herramienta | Campos clave |
-|---|---|
-| `create-common-event` | `name` · `trigger (0\|1\|2)?` · `switch_id?` · `commands?` |
-| `edit-common-event` | `event_id` · `name?` · `trigger?` · `switch_id?` · `commands?` |
-
-**Trigger:** `0`=Solo llamada · `1`=Autorun (switch ON) · `2`=Paralelo (loop)
-
-#### Mapas y eventos
-
-| Herramienta | Campos clave |
-|---|---|
-| `create-map` | `name` · `map_id?` · `width?` · `height?` · `tileset_id?` · `parent_id?` · `scroll_type?` · `encounter_step?` · `note?` · `enable_name_display?` · `autoplay_bgm?` · `bgm_name?` |
-| `edit-map` | `map_id` · `name?` · `tileset_id?` · `scroll_type?` · `encounter_step?` · `autoplay_bgm?` · `bgm_name?` · `bgm_volume?` · `encounters [{enemy_id, weight?}]?` |
-| `delete-map` | `map_id` · `confirm: true` (obligatorio) |
-| `create-map-event` | `map_id` · `event_name` · `x` · `y` · `event_type` · `pages` |
-| `edit-map-event` | `map_id` · `event_id` · `name?` · `x?` · `y?` · `note?` · `append_commands?` |
-| `delete-map-event` | `map_id` · `event_id` |
-| `add-dialogue` | `dialogue_lines` · `event_name?` |
-| `create-dialogue-advanced` | `dialogue_name` · `dialogue_nodes` (árbol con opciones y condiciones) |
-| `story-generator` | `story_title` · `scenes` (historia multi-escena completa) |
-
-**`create-map`** — Crea un nuevo mapa vacío y lo registra en `MapInfos.json`. Si se omite `map_id`, se asigna automáticamente el siguiente ID disponible. Devuelve `{ success, map_id, name, width, height, tileset_id, parent_id, filename }`.
-
-**`edit-map`** — Modifica propiedades de un mapa existente sin tocar tiles ni eventos. Actualiza también `MapInfos.json` cuando cambia `name`.
-
-**`delete-map`** — Elimina `MapXXX.json` (tras crear un backup) y pone null la entrada en `MapInfos.json`. Requiere `confirm: true`.
-
-**`edit-map-event`** — Renombra, mueve o añade comandos a un evento existente. `append_commands` inserta antes del terminador en la página 0. Formato: `{ type, data }` — tipos: `message` · `choice` · `wait` · `transfer` · `script` · `switch` · `variable` · `common-event` · `battle` · `animation` · `show-picture` · `tint-picture` · `move-picture` · `rotate-picture` · `erase-picture` (y muchos más — consulta EXAMPLES.md para la referencia completa de tipos de comando).
-
-| `edit-event-page` | `map_id` · `event_id` · `mode (add\|replace\|remove)` · `page_index?` · `page?` |
-
-**`edit-event-page`** — Añade, reemplaza o elimina páginas de un evento de mapa sin recrear el evento completo. Útil para NPCs multi-estado (progresión de misiones, día/noche, puertas bloqueadas). La página define trigger, sprite, movimiento, condiciones y comandos.
-
-**`delete-map-event`** — Pone null el slot del evento en el array de eventos del mapa.
-
-#### Vehículos
-
-| Herramienta | Campos clave |
-|---|---|
-| `edit-vehicle` | `vehicle (boat\|ship\|airship)` · `character_name?` · `character_index?` · `bgm? {name,volume,pitch,pan}` · `start_map_id?` · `start_x?` · `start_y?` |
-
-**`edit-vehicle`** — Edita bote, barco o aeronave en `System.json`. Todos los campos excepto `vehicle` son opcionales.
+| `action` | Campos clave | Descripción |
+|---|---|---|
+| `set-switch` | `id`, `value` | Activar o desactivar un switch del juego |
+| `set-variable` | `id`, `value` | Asignar un valor a una variable del juego |
+| `teleport` | `map_id`, `x`, `y`, `direction?` | Mover al jugador a cualquier mapa y coordenadas |
+| `save` | `slot?` | Guardar en un slot (por defecto 98) |
+| `load` | `slot?` | Cargar desde un slot (por defecto 98) |
+| `modify-inventory` | `operations [{action,type,id?,amount}]` | Añadir o quitar ítems / armas / armaduras / oro |
+| `set-party-state` | `actor_id?`, `hp_percent?`, `mp_percent?`, `states?` | Ajustar HP/MP % y estados de un actor o todo el grupo |
+| `call-common-event` | `common_event_id` | Disparar un evento común por ID |
+| `modify-actor` | `actor_id`, `field`, `value`, `mode?` | Cambiar nivel / exp / HP / MP / TP de un actor |
+| `manage-party` | `action (get\|add\|remove)`, `actor_id?` | Leer el grupo o añadir/eliminar un miembro |
+| `control-weather` | `type (none\|rain\|storm\|snow)`, `power (0-9)`, `duration?` | Cambiar el efecto de clima |
+| `play-audio` | `action (bgm\|bgs\|se\|me\|stop_bgm\|stop_bgs\|stop_se)`, `name?`, `volume?`, `pitch?`, `pan?` | Reproducir o detener audio |
+| `control-timer` | `action (start\|stop\|get)`, `frames?` | Controlar el temporizador de cuenta regresiva del juego |
+| `show-message` | `text`, `speaker?` | Mostrar un mensaje en la ventana del juego |
+| `execute-script` | `code`, `timeout?` | Evaluar JavaScript arbitrario (MZ/MV) o Ruby (VX Ace/VX/XP) en el juego en ejecución |
 
 ---
 
-#### Pintura de tiles en mapas
+#### `runtime-inspect` — Leer el estado en vivo del juego
 
-| Herramienta | Campos clave |
-|---|---|
-| `read-map-tiles` | `map_id` · `x?` · `y?` · `width?` · `height?` · `layers? [0-5]` |
-| `paint-map-tiles` | `map_id` · `tiles [{x, y, layer, tile_id}]` |
-| `fill-map-region` | `map_id` · `x` · `y` · `width` · `height` · `layer` · `tile_id` |
-| `paint-map-region` | `map_id` · `layer` · `x` · `y` · `width` · `height` · `tile_id` o `tiles [array plano]` |
+Lee el estado actual del juego en ejecución. Requiere el mismo bridge que `runtime-control`.
 
-Fórmula de índice: `x + y × anchura + capa × anchura × altura`. Capas: 0–3 = capas de tile (0=vacío, IDs válidos ≥ 2048), 4 = sombras (0–15), 5 = región (0–255).
-
-**`read-map-tiles`** — Devuelve los IDs de tile de cada celda de la región solicitada. Útil para entender el estado actual antes de pintar.
-
-**`paint-map-tiles`** — Aplica un array de cambios de tile individuales de forma atómica. Las entradas inválidas se omiten y se devuelven como advertencias.
-
-**`fill-map-region`** — Rellena un rectángulo con un solo tile en cualquier capa. `tile_id=0` borra la región.
-
-**`paint-map-region`** — Modo fill (`tile_id`) o modo stamp (`tiles` = array plano row-major de `anchura×altura` IDs). El modo stamp es el camino eficiente para colocar plantillas de habitaciones o prefabs de mazmorra.
+| `action` / `type` | Campos clave | Devuelve |
+|---|---|---|
+| `game-state` | — | Mapa, posición del jugador, HP/niveles del grupo, oro |
+| `switch` | `id` | Valor ON/OFF actual y nombre |
+| `variable` | `id` | Valor numérico actual y nombre |
+| `inventory` | `category? (items\|weapons\|armors\|all)` | Inventario del grupo con cantidades |
+| `actor` | `actor_id` | Nivel, HP, MP, TP, estados, equipo, habilidades |
+| `party` | — | Lista de miembros actuales del grupo |
+| `map` | — | Dimensiones del mapa, posición del jugador, clima activo |
+| `battle` | — | Estado de batalla: turno, enemigos, grupo (devuelve `in_battle: false` si no hay batalla) |
+| `timer` | — | Estado del temporizador: `{ working, seconds }` |
 
 ---
 
-#### Tilesets
+#### `query-data` — Leer datos del proyecto
 
-| Herramienta | Campos clave |
+Acceso de solo lectura a todos los archivos de datos del proyecto.
+
+| `action` | Campos clave | Descripción |
+|---|---|---|
+| `list` | `data_type` | Listar entidades por tipo con IDs y nombres |
+| `entity` | `entity_type`, `entity_id` | Leer los datos completos de una entidad |
+| `map` | `map_id` | Leer metadatos del mapa, eventos y encuentros |
+| `maps` | — | Listar todos los mapas desde MapInfos |
+| `resources` | `category?` | Listar archivos de assets en `img/` y `audio/` |
+| `system` | `section?` | Leer System.json (sección: `terms\|vehicles\|sounds\|basic\|all`) |
+| `animation` | `animation_id?` | Leer una animación o listar todas |
+| `tileset` | `tileset_id?`, `include_flags?` | Leer metadatos del tileset |
+| `search` | `entity_type`, `query` | Búsqueda de subcadena en nombres (sin distinción de mayúsculas) |
+| `summary` | — | Resumen compacto del proyecto: conteos, mapas, totales |
+
+---
+
+#### `game-entity` — Crear, editar, eliminar y duplicar entidades
+
+Gestiona todas las entidades de la base de datos RPG. Usa `action: "create"` para añadir una nueva entrada (sin ID); usa `action: "edit"` con un ID para actualizar una existente.
+
+| `action` | Valores de `type` | Campos clave en `data` |
+|---|---|---|
+| `create` | actor, item, weapon, armor, skill, class, state, enemy, troop, common-event, animation, tileset | `name` (obligatorio) + campos específicos del tipo |
+| `edit` | igual que arriba | `<type>_id` + campos a actualizar |
+| `delete` | igual que arriba | `entity_type`, `entity_id`, `confirm: true` |
+| `duplicate` | igual que arriba | `entity_type`, `entity_id`, `new_name` |
+| `generate` | character | `name`, `archetype (warrior\|mage\|rogue\|healer\|paladin\|ranger)` |
+| `traits` | actor, class, enemy, weapon, armor, state | `entity_id`, `mode (replace\|append\|clear)`, `traits [{code,data_id,value}]` |
+| `effects` | skill, item | `entity_id`, `mode`, `effects [{code,data_id,value1,value2}]` |
+| `class-learnings` | class | `class_id`, `mode (replace\|append\|remove_at_level)`, `learnings [{level,skill_id}]` |
+| `enemy-actions` | enemy | `enemy_id`, `mode`, `actions [{skill_id,rating,condition_type,...}]` |
+| `drop-items` | enemy | `enemy_id`, `mode`, `drops [{kind,data_id,denominator}]` |
+| `character` | (sistema) | `vehicle (boat\|ship\|airship)` + sprite/BGM/posición inicial opcionales |
+| `system` | (sistema) | Configuración global: `game_title`, `currency_unit`, `initial_party`, posición de inicio, nombres de switches/variables, audio, flags de opciones |
+
+`generate` construye un actor completo a partir de un arquetipo de alto nivel. Lee las clases, armas y armaduras del proyecto y elige las más adecuadas mediante coincidencia de palabras clave. Devuelve `{ actor_id, class_id, equips, sprite }`.
+
+`delete` crea un backup antes de anular el slot de la entidad. El índice se preserva — equivalente al comportamiento de delete del editor de RPG Maker.
+
+---
+
+#### `game-map` — Todas las operaciones de mapas y tilesets
+
+| `action` | Campos clave en `data` | Descripción |
+|---|---|---|
+| `create` | `name`, `map_id?`, `width?`, `height?`, `tileset_id?`, `parent_id?` | Crear un nuevo mapa vacío |
+| `edit` | `map_id`, `name?`, `tileset_id?`, `encounters?`, campos BGM/BGS/parallax | Editar propiedades del mapa |
+| `delete` | `map_id`, `confirm: true` | Eliminar archivo de mapa y anular entrada en MapInfos |
+| `copy` | `source_map_id`, `new_name`, `parent_id?` | Duplicar un mapa con tiles y eventos |
+| `edit-info` | `map_id`, `name?`, `parent_id?`, `order?`, `expanded?` | Editar solo metadatos de MapInfos (sin I/O de archivo de mapa) |
+| `read-tiles` | `map_id`, `x?`, `y?`, `width?`, `height?`, `layers?` | Leer IDs de tile de una región |
+| `paint-tiles` | `map_id`, `tiles [{x,y,layer,tile_id}]` | Aplicar cambios de tile individuales de forma atómica |
+| `fill` | `map_id`, `x`, `y`, `width`, `height`, `layer`, `tile_id` | Rellenar un rectángulo con un tile |
+| `paint-region` | `map_id`, `layer`, `x`, `y`, `width`, `height`, `tile_id` o `tiles` | Modo fill o stamp para una región de tiles |
+| `create-event` | `map_id`, `event_name`, `x`, `y`, `event_type`, `pages` | Crear un nuevo evento de mapa |
+| `edit-event` | `map_id`, `event_id`, `name?`, `x?`, `y?`, `append_commands?` | Editar un evento existente |
+| `delete-event` | `map_id`, `event_id` | Anular el slot del evento |
+| `edit-event-page` | `map_id`, `event_id`, `mode (add\|replace\|remove)`, `page_index?`, `page?` | Añadir, reemplazar o eliminar una página de evento |
+| `edit-troop-events` | `troop_id`, `mode`, `pages [{conditions,span,commands}]` | Editar páginas de eventos de batalla en una tropa |
+| `create-tileset` | `name`, `mode?`, `tilesetNames? [9 entradas]` | Crear una nueva entrada de tileset |
+| `edit-tileset` | `tileset_id`, `flag_overrides [{tile_id,passable?,terrain_tag?}]` | Editar pasabilidad y terrain tags |
+| `edit-tileset-properties` | `tileset_id`, `name?`, `mode?`, `tilesetNames?` | Editar nombre, modo y referencias gráficas del tileset |
+
+Capas de tile: 0–3 = capas de tile (IDs >= 2048), 4 = sombras (0–15), 5 = ID de región (0–255).
+
+Los comandos de evento usan el formato `{ type, data }`. Consulta EXAMPLES.md para la referencia completa de tipos de comando.
+
+---
+
+#### `dialogue-tools` — Autoría de diálogos e historias
+
+| `action` | Campos clave en `data` | Descripción |
+|---|---|---|
+| `add` | `dialogue_lines [{speaker?,text}]`, `event_name?` | Añadir diálogo a un evento (forma simple) |
+| `create-advanced` | `dialogue_name`, `dialogue_nodes` | Crear un árbol de diálogo ramificado con opciones, condiciones y acciones |
+| `generate-story` | `story_title`, `story_description`, `scenes` | Generar una historia multi-escena completa con mapas y eventos |
+| `export` | `include_maps?`, `include_common_events?`, `map_ids?` | Exportar todo el texto de diálogo a JSON estructurado |
+| `import` | `entries [array]`, `confirm: true` | Escribir diálogo traducido/modificado de vuelta al proyecto |
+
+`export` produce entradas con `source_type`, `source_id`, `event_id`, `page`, `command_index`, `speaker` y `lines[]`. Caso de uso principal: flujos de traducción. `import` empareja por esos mismos campos — el número de líneas debe coincidir con el original.
+
+---
+
+#### `battle-sim` — Simulación de batallas
+
+| `action` | Campos clave en `data` | Descripción |
+|---|---|---|
+| `encounter` | `troop_id` o `enemy_id` + `count`, `actions?` | Disparar una sola batalla con plan de turnos opcional |
+| `suite` | `troop_id` o `enemy_id`, `runs`, `actions?` | Ejecutar la misma batalla N veces; devuelve win rate, HP medio, daño |
+
+---
+
+#### `project-tools` — Mantenimiento del proyecto y operaciones en lote
+
+| `action` | Campos clave en `data` | Descripción |
+|---|---|---|
+| `validate` | `entity_types?`, `include_warnings?` | Ejecutar todos los validadores; devuelve informe estructurado |
+| `cleanup` | `entity_types?` | Auditoría de solo lectura de slots nulos en arrays de entidades |
+| `find-replace` | `find`, `replace`, `targets?`, `confirm: true` | Búsqueda y reemplazo masivo en nombres, notas y texto de comandos |
+| `batch-update` | `entity_type`, `entity_ids [array]`, `updates {object}`, `confirm: true` | Aplicar los mismos cambios de campo a múltiples entidades |
+| `batch-create` | `entity_type`, `entities [array]` (máx 50) | Crear múltiples entidades del mismo tipo de forma atómica |
+| `batch-delete` | `entity_type`, `entity_ids [array]` (máx 100), `confirm: true` | Anular múltiples slots de entidad en una llamada |
+| `history` | `limit?`, `entity_type?`, `action?`, `since?` | Consultar el historial de cambios |
+
+`validate` devuelve `{ valid, total_checked, total_errors, total_warnings, issues: [{entity_type, id, name, errors[], warnings[]}] }`.
+
+`find-replace` targets: `"names"` `"notes"` `"event_commands"` (por defecto: los tres). Devuelve `{ total_replacements, files_changed[] }`.
+
+---
+
+#### `plugin-manage` — Gestión de plugins (MZ/MV) y scripts (engines Ruby)
+
+**MZ / MV:**
+
+| `action` | Campos clave en `data` | Descripción |
+|---|---|---|
+| `create` | `plugin_name`, `description`, `author`, `version`, `code_type` | Crear un nuevo plugin desde una plantilla |
+| `create-advanced` | `plugin_name`, `template_type` | Crear un plugin con plantilla especializada |
+| `manage` | `action (list\|enable\|disable\|delete)`, `plugin_name?` | Listar o activar/desactivar plugins |
+| `edit-parameters` | `plugin_name`, `parameters {clave: "valor", …}` | Actualizar valores de parámetros del plugin (todos son strings en MZ) |
+| `reorder` | `plugin_name`, `position (first\|last\|before\|after)`, `relative_plugin?` | Cambiar el orden de carga del plugin |
+
+**VX Ace / VX / XP** (los engines Ruby usan scripts, no plugins):
+
+| `action` | Campos clave en `data` | Descripción |
+|---|---|---|
+| `list-scripts` | — | Devuelve `[{id, name}]` de todos los scripts |
+| `read-script` | `id?` o `name?` | Devuelve `{id, name, source}` |
+| `create-script` | `name`, `source` | Añadir un nuevo script; devuelve `script_id` |
+| `edit-script` | `id`, `name?`, `source?` | Actualizar nombre y/o fuente del script |
+| `delete-script` | `id`, `confirm: true` | Eliminar un script por ID |
+
+---
+
+#### `game-setup` — Comprobación de salud y lanzamiento
+
+| `action` | Campos clave en `data` | Descripción |
+|---|---|---|
+| `health-check` | — | Comprobación de que el servidor está activo: estado, engine, ruta del proyecto |
+| `setup-debug` | — | Instalar el plugin/script del bridge de runtime en el proyecto |
+| `launch` | — | Lanzar el ejecutable de RPG Maker |
+
+`setup-debug` en MZ/MV escribe `RPGMakerDebugger.js` en `js/plugins/` y lo registra. En VX Ace/VX/XP inyecta `RpgMakerMCPBridge` en `Scripts.rvdata2`. Se puede llamar varias veces — nunca sobreescribe plugins/scripts existentes.
+
+---
+
+#### `manage-backups` — Gestión de backups
+
+Usa campos directos (sin wrapper `data`):
+
+| Campo | Descripción |
 |---|---|
-| `read-tileset` | `tileset_id?` · `include_flags?` |
-| `create-tileset` | `name` · `mode?` · `tilesetNames? [9 entradas]` |
-| `edit-tileset-properties` | `tileset_id` · `name?` · `mode?` · `tilesetNames? [9 entradas]` |
-| `edit-tileset` | `tileset_id` · `flag_overrides [{tile_id, passable?, terrain_tag?}]` |
+| `action (list\|restore\|delete\|prune)` | Operación a realizar |
+| `filename?` | Filtrar por archivo fuente |
+| `backup_name?` | Apuntar a un archivo de backup específico |
+| `max_count?` | Podar hasta esta cantidad de backups por archivo |
 
-**`read-tileset`** — Lee los metadatos del tileset: nombre, modo, archivos gráficos (`tilesetNames` con 9 slots: A1 A2 A3 A4 A5 B C D E) y un resumen de pasabilidad. Con `include_flags: true` devuelve el array completo de 8192 flags. Sin `tileset_id` lista todos los tilesets.
+Los backups se crean automáticamente antes de cada escritura y se almacenan en `<proyecto>/backups/`. `BACKUP_MAX_COUNT` controla la retención (por defecto 10). Para engines Ruby, los backups son copias binarias de los archivos Marshal.
 
-**`create-tileset`** — Crea un nuevo tileset en `Tilesets.json`. Todos los 8192 flags empiezan como pasables. `tilesetNames` es un array de 9 nombres de archivo (sin extensión) de `img/tilesets/`.
+---
 
-**`edit-tileset-properties`** — Edita nombre, modo (`0`=Mundo / `1`=Área) o los 9 archivos gráficos de un tileset. Para pasabilidad y terrain tags usa `edit-tileset`.
+#### `batch-edit` — Escape hatch para operaciones multi-paso
 
-**`edit-tileset`** — Modifica la pasabilidad y la etiqueta de terreno de uno o varios tiles de un tileset. `tile_id` va de 0 a 8191. `passable: false` bloquea las cuatro direcciones. `terrain_tag` (0–7) se almacena en los bits 12–15 del flag.
-
-#### Plugins
-
-| Herramienta | Descripción |
-|---|---|
-| `create-plugin` | Plugin básico con plantillas de código |
-| `create-plugin-advanced` | Plugin avanzado con plantillas especializadas |
-| `setup-debug-plugin` | Instala el plugin de bridge en tiempo real y registra todos los plugins existentes |
-| `manage-plugins` | `action (list\|enable\|disable\|delete)` · `plugin_name?` |
-
-`setup-debug-plugin` escribe `RPGMakerDebugger.js` en `js/plugins/`, lo registra en `plugins.js` (activado) y también registra los demás `.js` ya existentes en la carpeta (desactivados) para que aparezcan en el Plugin Manager. Se puede llamar varias veces — nunca sobreescribe plugins existentes.
-
-**`manage-plugins`** — `list` devuelve todos los plugins registrados con nombre/estado/descripción. `enable`/`disable` activan o desactivan. `delete` los elimina del registro y borra el archivo `.js` si existe.
-
-| `edit-plugin-parameters` | `plugin_name` · `parameters {clave: "valor", …}` |
-| `reorder-plugin` | `plugin_name` · `position (first\|last\|before\|after)` · `relative_plugin?` |
-
-**`edit-plugin-parameters`** — Actualiza parámetros individuales de un plugin registrado. Solo se cambian las claves indicadas; el resto se preserva. Los valores deben ser strings (formato de RPG Maker MZ).
-
-**`reorder-plugin`** — Cambia el orden de carga de un plugin en `js/plugins.js`. `position: "before"` y `"after"` requieren `relative_plugin`. El orden de plugins es crítico en RPG Maker MZ.
-
-#### Animaciones
-
-| Herramienta | Campos clave |
-|---|---|
-| `read-animation` | `animation_id?` |
-| `edit-animation` | `animation_id` · `name?` · `effect_name?` · `display_type?` · `offset_x?` · `offset_y?` · `speed?` |
-
-**`read-animation`** — Devuelve el objeto de animación completo cuando se proporciona `animation_id`. Sin ID lista todas las animaciones con id y nombre.
-
-**`edit-animation`** — Edita metadatos: `effect_name` referencia un archivo Effekseer de la carpeta `effects/` (sin extensión). `display_type`: 0=cabeza objetivo, 1=centro objetivo, 2=pantalla completa, -1=frente pantalla.
-
-#### Herramientas de utilidad
-
-| Herramienta | Campos clave |
-|---|---|
-| `search-entity` | `entity_type` · `query (búsqueda de subcadena en nombre)` |
-| `duplicate-entity` | `entity_type` · `entity_id` · `new_name` |
-| `export-project-summary` | *(sin entrada requerida)* |
-| `edit-map-info` | `map_id` · `name?` · `parent_id?` · `order?` · `expanded?` |
-| `validate-project` | `entity_types?` · `include_warnings?` |
-| `find-and-replace` | `find` · `replace` · `targets?` · `confirm: true` |
-| `copy-map` | `source_map_id` · `new_name` · `parent_id?` |
-| `cleanup-project` | `entity_types?` |
-| `batch-update-entities` | `entity_type` · `entity_ids [array]` · `updates {object}` · `confirm: true` |
-| `export-dialogue` | `include_maps?` · `include_common_events?` · `map_ids?` |
-| `import-dialogue` | `entries [array]` · `confirm: true` |
-
-**`search-entity`** — Búsqueda de subcadena sin distinción de mayúsculas en cualquier tipo de entidad. Devuelve `{ matches: [{id, name}] }`.
-
-**`duplicate-entity`** — Clona una entidad con un nuevo nombre y el siguiente ID disponible. Devuelve `{ success, new_id, name }`.
-
-**`export-project-summary`** — Devuelve un resumen compacto del proyecto: conteos de actores/enemigos/habilidades, nombres de mapas, totales de switches y variables.
-
-**`edit-map-info`** — Edita solo la entrada de metadatos de MapInfos.json (nombre, padre, orden) sin tocar el archivo de tiles/eventos.
-
-**`validate-project`** — Ejecuta todos los validadores sobre el proyecto completo y devuelve un informe estructurado. Devuelve `{ valid, total_checked, total_errors, total_warnings, issues: [{entity_type, id, name, errors[], warnings[]}] }`. Filtra con `entity_types` para limitar el alcance.
-
-**`find-and-replace`** — Busca y reemplaza texto en masa en nombres de entidades, notas y texto de comandos de evento en todos los archivos de datos y mapas. `targets`: `"names"` `"notes"` `"event_commands"` (por defecto: los tres). Requiere `confirm: true`. Devuelve `{ total_replacements, files_changed[] }`.
-
-**`copy-map`** — Duplica un mapa existente (tiles + eventos) con un nuevo nombre y el siguiente ID disponible. Añade automáticamente la entrada a `MapInfos.json`. Devuelve `{ new_map_id, name, copied_from }`.
-
-**`cleanup-project`** — Auditoría de solo lectura de las ranuras nulas en los arrays JSON de entidades. Informa `{ null_slots, active_entities, total_slots }` por tipo de entidad. NO reescribe archivos ni reasigna IDs.
-
-**`batch-update-entities`** — Aplica las mismas actualizaciones de campo a múltiples entidades del mismo tipo en una sola llamada. Útil para balanceo masivo: establecer HP en 10 enemigos, renombrar un grupo de ítems, etc. Tipos admitidos: `Actor` `Item` `Weapon` `Armor` `Skill` `Class` `State` `Enemy` `Troop` `CommonEvent` `Animation` `Tileset`. Devuelve `{ results: [{id, success}] }`. Requiere `confirm: true`.
-
-**`export-dialogue`** — Extrae todo el texto de diálogo de eventos de mapa y eventos comunes en un JSON estructurado. Cada entrada contiene `source_type`, `source_id`, `event_id`, `page`, `command_index`, `speaker` y `lines[]`. Caso de uso principal: preparar texto para traducción.
-
-**`import-dialogue`** — Escribe el diálogo traducido/modificado de vuelta al proyecto. Empareja entradas por `source_id`, `event_id`, `page` y `command_index` de `export-dialogue`. El número de líneas por entrada debe coincidir con el original. Requiere `confirm: true`.
-
-#### Control en tiempo real
-
-Estas herramientas controlan el **juego en ejecución** y funcionan en los cinco engines:
-
-**MZ / MV** — bridge HTTP (puerto 9001). Setup: `setup-debug-plugin` → activar plugin en Plugin Manager → Play / F5.
-
-**VX Ace / VX / XP** — bridge TCP (puerto 9002). Setup: `setup-debug-plugin` → cerrar y reabrir el proyecto en RPG Maker → Play.
-
-El puerto Ruby puede cambiarse con `RUBY_BRIDGE_PORT` en `.env` (por defecto: `9002`).
-
-| Herramienta | Descripción |
-|---|---|
-| `launch-game` | Lanza el ejecutable de RPG Maker MZ |
-| `get-game-state` | Lee mapa actual, posición del jugador, HP/nivel del grupo, oro |
-| `get-switch` | Lee el valor ON/OFF actual de un switch del juego (`id`) |
-| `get-variable` | Lee el valor numérico actual de una variable del juego (`id`) |
-| `set-switch` | Activa o desactiva un switch del juego (`id`, `value`) |
-| `set-variable` | Asigna un valor a una variable del juego (`id`, `value`) |
-| `get-inventory` | Lee el inventario actual del grupo (`category?: items\|weapons\|armors\|all`) |
-| `modify-inventory` | Añade o quita ítems/armas/armaduras/oro (`operations [{action,type,id?,amount}]`) |
-| `call-common-event` | Dispara un evento común por ID (`common_event_id`) |
-| `modify-actor-runtime` | Modifica nivel/exp/HP/MP/TP de un actor en tiempo real |
-| `teleport-player` | Mueve al jugador a cualquier mapa y coordenadas (`map_id`, `x`, `y`, `direction?`) |
-| `save-game` | Guarda en un slot (`slot`, por defecto 98 — recomendado para snapshots de test) |
-| `load-game` | Carga desde un slot (`slot`, por defecto 98) — espera a que el mapa recargue antes de devolver |
-| `set-party-state` | Ajusta HP/MP % y añade/quita estados a un actor o a todo el grupo |
-| `start-encounter` | Inicia una batalla (`troop_id` o `enemy_id` + `count` + `actions` opcional con plan de turnos) |
-| `run-battle-suite` | Corre la misma batalla N veces y devuelve estadísticas agregadas: win rate, HP medio, daño infligido/recibido |
-| `execute-script` | Evalúa JavaScript arbitrario en el juego en ejecución (`code`, `timeout?`) |
-| `show-message` | Muestra un mensaje en la ventana de mensajes del juego (`text`, `speaker?`) |
-| `get-actor-runtime` | Lee el estado en vivo de un actor: nivel, HP, MP, TP, estados, equipo, habilidades |
-| `manage-party-runtime` | `action (get\|add\|remove)` · `actor_id?` — leer grupo o añadir/eliminar miembro |
-| `control-weather-runtime` | `type (none\|rain\|storm\|snow)` · `power (0-9)` · `duration?` |
-| `play-audio-runtime` | `action (bgm\|bgs\|se\|me\|stop_bgm\|stop_bgs\|stop_se)` · `name?` · `volume?` · `pitch?` · `pan?` |
-| `get-map-state-runtime` | Lee dimensiones del mapa actual, posición del jugador y clima activo |
-| `control-timer-runtime` | `action (start\|stop\|get)` · `frames?` (requerido para start) |
-| `get-battle-state-runtime` | *(sin entrada requerida — debe estar en batalla)* |
-
-**`control-timer-runtime`** — Inicia, detiene o consulta el temporizador de cuenta regresiva del juego. `action: "get"` devuelve `{ working, seconds }`. `action: "start"` requiere `frames` (60 frames = 1 segundo).
-
-**`get-battle-state-runtime`** — Lee el estado de batalla actual: `{ in_battle, turn, enemies: [{id,name,hp,mhp,mp,alive,states}], party: [{id,name,hp,mhp,mp,alive}] }`.
-
-**Flujo típico:**
-
-```
-1. setup-debug-plugin              ← instalar una vez por proyecto
-2. launch-game                     ← iniciar el juego
-3. get-game-state                  ← verificar conexión y leer estado inicial
-4. get-switch / get-variable       ← leer valores actuales de flags/contadores
-5. set-switch / set-variable       ← configurar flags para el escenario a probar
-6. get-inventory                   ← inspeccionar inventario antes del test
-7. modify-inventory                ← añadir ítems/oro de prueba
-8. teleport-player                 ← saltar al área bajo prueba
-9. modify-actor-runtime            ← ajustar nivel/HP/TP del actor para el escenario
-10. set-party-state                ← configurar HP/MP/estados del grupo
-11. call-common-event              ← disparar evento de configuración si es necesario
-12. start-encounter                ← ejecutar batalla y obtener el log completo
-13. run-battle-suite               ← repetir N veces para análisis estadístico
-14. save-game / load-game          ← guardar y restaurar estado para reproducción
-```
-
-#### Backups
-
-`manage-backups` — acciones: `list` · `restore` · `delete` · `prune`
-
-Los backups se crean automáticamente antes de cada escritura. `BACKUP_MAX_COUNT` controla cuántos se conservan (por defecto 10).
-
-#### Operaciones en lote
-
-| Herramienta | Campos clave |
-|---|---|
-| `batch-edit` | `operations [{tool, input}]` (máx 50) · `stop_on_error?` |
-| `batch-create-entities` | `entity_type (Actor\|Item\|Weapon\|Armor\|Skill\|Class\|State\|Enemy\|Troop\|CommonEvent\|Animation\|Tileset)` · `entities [array de objetos]` (máx 50) |
-| `batch-delete-entities` | `entity_type` · `entity_ids [array de enteros]` (máx 100) · `confirm: true` |
-
-**`batch-edit`** — Ejecuta hasta 50 operaciones en una sola llamada MCP. Devuelve resultados individuales. Usa `stop_on_error: true` para detener en el primer error.
-
-**`batch-create-entities`** — Crea múltiples entidades del mismo tipo de forma atómica. Cada objeto en `entities` necesita al menos `name`. Tipos admitidos: `Actor` `Item` `Weapon` `Armor` `Skill` `Class` `State` `Enemy` `Troop` `CommonEvent` `Animation` `Tileset`. Devuelve `{ results: [{index, success, id}] }`.
-
-**`batch-delete-entities`** — Anula múltiples entidades en una sola operación. Admite todos los tipos de entidad, incluyendo Animation, Troop, CommonEvent y Tileset. Requiere `confirm: true`. Devuelve resultado por ID.
+Ejecuta múltiples llamadas a handlers internos en una sola llamada MCP. Las operaciones se ejecutan en orden; los fallos se reportan por operación y no bloquean el resto (salvo con `stop_on_error: true`).
 
 ```json
 {
@@ -1110,9 +780,62 @@ Los backups se crean automáticamente antes de cada escritura. `BACKUP_MAX_COUNT
 }
 ```
 
+Máximo 50 operaciones por llamada. Las llamadas anidadas de `batch-edit` son rechazadas.
+
+---
+
+### Configuración del bridge en tiempo real
+
+#### MZ / MV — bridge HTTP (puerto 9001)
+
+1. Llamar `game-setup` con `action: "setup-debug"` — instala `RPGMakerDebugger.js`
+2. Activar el plugin en el Plugin Manager de RPG Maker
+3. Pulsar Play / F5 — el plugin consulta el servidor MCP cada 500 ms
+
+#### VX Ace / VX / XP — bridge TCP (puerto 9002)
+
+1. Llamar `game-setup` con `action: "setup-debug"` — inyecta `RpgMakerMCPBridge` en `Scripts.rvdata2`
+2. Cerrar y reabrir el proyecto en RPG Maker para que cargue el nuevo script
+3. Pulsar Play — el script inicia un servidor TCP en el puerto 9002 dentro del juego
+
+Puedes cambiar el puerto del bridge Ruby con `RUBY_BRIDGE_PORT` en `.env` (por defecto: `9002`).
+
+**Flujo típico de runtime:**
+
+```
+1. game-setup (setup-debug)              ← instalar una vez por proyecto
+2. game-setup (launch)                   ← iniciar el juego
+3. runtime-inspect (game-state)          ← verificar conexión y leer estado inicial
+4. runtime-inspect (switch/variable)     ← leer valores actuales de flags/contadores
+5. runtime-control (set-switch/set-variable) ← configurar flags para el escenario
+6. runtime-inspect (inventory)           ← inspeccionar inventario antes del test
+7. runtime-control (modify-inventory)    ← añadir ítems/oro de prueba
+8. runtime-control (teleport)            ← saltar al área bajo prueba
+9. runtime-control (modify-actor)        ← ajustar nivel/HP/TP del actor
+10. runtime-control (set-party-state)    ← configurar HP/MP/estados del grupo
+11. runtime-control (call-common-event)  ← disparar evento de configuración si es necesario
+12. battle-sim (encounter)               ← ejecutar batalla y obtener el log completo
+13. battle-sim (suite)                   ← repetir N veces para análisis estadístico
+14. runtime-control (save/load)          ← guardar y restaurar estado para reproducción
+```
+
+---
+
+### Historial de cambios
+
+Cada escritura exitosa añade una entrada a `<proyecto>/mcp-changes.json`. Consúltalo con `project-tools` y `action: "history"`:
+
+```json
+{ "action": "history", "data": { "action": "create", "limit": 20 } }
+```
+
+Campos de entrada: `timestamp` · `tool` · `entityType` · `entityId` · `action` · `summary`
+
+---
+
 ### Ejemplos
 
-No escribes JSON directamente — solo describe lo que quieres en lenguaje natural y la IA se encarga del resto. Consulta **[EXAMPLES.md](EXAMPLES.md)** para ver prompts en lenguaje natural y el JSON equivalente de cada herramienta, en inglés y español.
+No escribes JSON directamente — solo describe lo que quieres en lenguaje natural y la IA se encarga del resto. Consulta **[EXAMPLES.md](EXAMPLES.md)** para ver prompts en lenguaje natural y el JSON equivalente de cada macro, en inglés y español.
 
 ---
 
@@ -1123,7 +846,9 @@ npm test               # ejecutar todos los tests
 npm run test:coverage  # con informe de cobertura
 ```
 
-640+ tests en 32 suites.
+810+ tests en 43 suites.
+
+---
 
 ### Solución de problemas
 
@@ -1134,8 +859,8 @@ npm run test:coverage  # con informe de cobertura
 | `RPG Maker data directory not found` | La raíz del proyecto debe tener una carpeta `data/` |
 | `Invalid plugin filename` | Los nombres de plugin no pueden contener `<>:"/\|?*` ni separadores de ruta |
 | `Game not connected` (MZ/MV) | Lanza el juego con el plugin RPGMakerDebugger activado; espera a que cargue el mapa |
-| `Ruby bridge not available` (VX Ace) | Ejecuta `setup-debug-plugin`, reabre el proyecto, pulsa Play y espera a que cargue el mapa |
-| Tool de runtime agota el tiempo | El juego puede estar en la pantalla de título — entra al mapa primero |
+| `Ruby bridge not available` (VX Ace/VX/XP) | Ejecuta `game-setup (setup-debug)`, reabre el proyecto, pulsa Play y espera a que cargue el mapa |
+| Tool de runtime agota el tiempo | El juego puede estar en la pantalla de título — entra al mapa primero; o el script del bridge no está en ejecución |
 | Conflicto de puerto Ruby | Cambia `RUBY_BRIDGE_PORT` en `.env` a un puerto libre (por defecto: 9002) |
 | Server cuelgado | `Ctrl+C` → verifica que la ruta es accesible → reinicia con `npm run dev` |
 

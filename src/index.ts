@@ -329,7 +329,7 @@ async function main() {
 
   if (!validateSetup()) process.exit(1);
 
-  const server = new McpServer({ name: "rpgmaker-mcp", version: "1.0.0" });
+  const server = new McpServer({ name: "rpgmaker-mcp", version: "2.1.0" });
 
   for (const tool of tools) {
     server.registerTool(

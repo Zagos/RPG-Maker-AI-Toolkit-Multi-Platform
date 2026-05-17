@@ -6,7 +6,7 @@ Guide for AI agents (and human contributors) working on this codebase.
 
 ## Project at a glance
 
-An MCP server written in **TypeScript ESM** (Node 20+, `"type": "module"`, `.js` extensions in all imports). It exposes **105 tools** that read and write RPG Maker project files, plus a runtime control bridge for live game manipulation (MZ/MV only). Each tool call is stateless — the server creates a fresh Reader/Writer per call.
+An MCP server written in **TypeScript ESM** (Node 20+, `"type": "module"`, `.js` extensions in all imports). It exposes **12 macro tools** to the LLM, backed by ~110 internal handlers. Each tool call is stateless — the server creates a fresh Reader/Writer per call.
 
 Supported engines: **MZ · MV · VX Ace · VX · XP** (selected via `RPGMAKER_ENGINE` env var, default `mz`).
 
@@ -25,10 +25,36 @@ src/index.ts                       ← server bootstrap, tool list, HTTP bridge,
                                      selects reader/writer based on RPGMAKER_ENGINE
 
 src/core/
+  resolve-handler.ts               ← engine-aware handler lookup (RUBY_ENGINES → ruby registry)
   change-log.ts                    ← engine-agnostic audit log (mcp-changes.json)
   types/
     reader.ts                      ← IProjectReader interface
     writer.ts                      ← IProjectWriter interface
+
+src/macro/                         ← 12 macro tools exposed to the LLM
+  schemas/
+    runtime-control.ts             ← runtime-control macro schema
+    runtime-inspect.ts             ← runtime-inspect macro schema
+    query-data.ts                  ← query-data macro schema
+    game-entity.ts                 ← game-entity macro schema
+    game-map.ts                    ← game-map macro schema
+    dialogue-tools.ts              ← dialogue-tools macro schema
+    battle-sim.ts                  ← battle-sim macro schema
+    project-tools.ts               ← project-tools macro schema
+    plugin-manage.ts               ← plugin-manage macro schema
+    game-setup.ts                  ← game-setup macro schema
+    manage-backups.ts              ← manage-backups macro schema
+    (batch-edit is the escape hatch — schema in src/adapters/mz/tools/)
+  handlers/
+    *.ts                           ← macro dispatchers → call internal handlers via resolveHandler()
+
+src/handlers/                      ← ~110 internal handlers (not exposed to LLM)
+  registry.ts                      ← TOOL_HANDLERS map (all internal tools except batch-edit)
+  registry-ruby.ts                 ← RUBY_RUNTIME_HANDLERS map (Ruby engine overrides)
+  runtime-ruby.ts                  ← runtime handlers for VX Ace/VX/XP via TCP bridge
+  types.ts                         ← HandlerContext interface
+  batch-edit.ts                    ← imports registry.ts (no circular dep)
+  *.ts                             ← one handler file per tool group
 
 src/adapters/
   mz/                              ← RPG Maker MZ (JSON, NW.js) — full feature set
@@ -39,13 +65,8 @@ src/adapters/
     constants.ts                   ← EVENT_CMD, TRAIT_CODE, EFFECT_CODE, PARAM_INDEX enums
     debug-bridge.ts                ← HTTP bridge for runtime control
     story-manager.ts / dialogue-manager.ts
-    handlers/
-      registry.ts                  ← TOOL_HANDLERS map (all tools except batch-edit)
-      types.ts                     ← HandlerContext interface
-      batch-edit.ts                ← imports registry.ts (no circular dep)
-      *.ts                         ← one handler file per tool group
     tools/
-      *.ts                         ← JSON Schema definitions (one per tool)
+      *.ts                         ← internal JSON Schema definitions (not exposed to LLM)
     types/
       rpgmaker.ts                  ← RPGMap, RPGMapEvent, RPGActor, … interfaces
     templates/
@@ -68,9 +89,11 @@ src/adapters/
     reader.ts                      ← XPReader extends VXAceReader
     writer.ts                      ← XPWriter extends VXAceWriter
 
-  ruby-bridge/                     ← Ruby Marshal ↔ JSON bridge (used by vxace/vx/xp)
-    bridge.rb                      ← Ruby script: read/write .rxdata/.rvdata/.rvdata2
+  ruby-bridge/                     ← Ruby bridges (Marshal I/O + runtime TCP)
+    bridge.rb                      ← Marshal ↔ JSON: read/write .rxdata/.rvdata/.rvdata2
     index.ts                       ← Node.js wrapper (spawnSync, 30s timeout, RUBY_PATH)
+    game-bridge.rb                 ← TCP server injected into the game (port 9002, RGSS3)
+    tcp-bridge.ts                  ← Node.js TCP client for game-bridge.rb
 
 tests/
   rpgmaker/*.test.ts               ← Vitest tests using temp project dirs
@@ -78,7 +101,7 @@ scripts/
   copy-assets.js                   ← copies .rb files from src/ to dist/ after tsc
 ```
 
-All 105 tools are MZ-native. VX Ace / VX / XP adapters implement `IProjectReader`/`IProjectWriter` so every handler works unchanged across engines. Runtime tools (bridge, debug, audio, weather) are MZ/MV-only — they return a clear error on Ruby engines.
+All internal handlers work on all engines. VX Ace / VX / XP adapters implement `IProjectReader`/`IProjectWriter` so every handler works unchanged across engines. Runtime tools use `ctx.debugBridge` on MZ/MV and `ctx.rubyBridge` (TCP) on Ruby engines. Plugin actions are MZ/MV-only; script actions are Ruby-only — the `plugin-manage` macro enforces this guard via `ctx.engine`.
 
 ---
 
@@ -92,30 +115,32 @@ interface HandlerContext {
   writer: IProjectWriter;
   input: Record<string, unknown>;  // raw tool input
   projectPath: string;
-  debugBridge: RPGMakerDebugBridge;
+  engine: string;                  // "mz" | "mv" | "vxace" | "vx" | "xp"
+  debugBridge: RPGMakerDebugBridge; // MZ/MV HTTP bridge (port 9001)
+  rubyBridge: RPGMakerRubyBridge;  // VX Ace/VX/XP TCP bridge (port 9002)
   changeLog: ChangeLog;
   debug: boolean;
 }
 ```
 
-`reader` and `writer` are created fresh per `handleToolCall()` invocation. `changeLog` is a singleton shared across all calls in a server process.
+`reader` and `writer` are created fresh per `handleToolCall()` invocation. `changeLog` is a singleton. On MZ/MV calls, `rubyBridge` is present but unused; on Ruby-engine calls, `debugBridge` is present but unused — check `ctx.engine` to decide which bridge to use.
 
 ---
 
-## Adding a new tool — checklist
+## Adding a new internal handler — checklist
 
-1. **Schema** — create `src/adapters/mz/tools/my-tool.ts` exporting a `MyTool` object (`name`, `description`, `inputSchema`).
+1. **Schema** (internal only) — create `src/adapters/mz/tools/my-tool.ts` exporting a tool object. These are NOT exposed to the LLM; they serve as documentation and are used by batch-edit.
 
-2. **Handler** — create `src/adapters/mz/handlers/my-tool.ts` exporting `async function handleMyTool(ctx: HandlerContext): Promise<string>`.
+2. **Handler** — create `src/handlers/my-tool.ts` exporting `async function handleMyTool(ctx: HandlerContext): Promise<string>`.
    - Read from `ctx.input` (cast as needed).
    - Validate with `RPGMakerValidator` if writing entity data.
    - Call `ctx.writer.*` to persist.
    - Call `ctx.changeLog.append(…)` on success.
    - Wrap in try/catch; return `JSON.stringify({ error })` on failure.
 
-3. **Register** — add to `src/adapters/mz/handlers/registry.ts` (handler import + entry in `TOOL_HANDLERS`).
+3. **Register** — add to `src/handlers/registry.ts` (handler import + entry in `TOOL_HANDLERS`).
 
-4. **Expose** — add `MyTool` to the `tools` array in `src/index.ts`.
+4. **Wire to a macro** — add a routing case to the relevant macro handler in `src/macro/handlers/`. Do NOT add the internal tool to the `tools` array in `src/index.ts` — only the 12 macros are exposed to the LLM. Use the `batch-edit` escape hatch if a multi-step operation doesn't fit any macro.
 
 5. **Tests** — add a test file in `tests/rpgmaker/`. Use `createTempProject()` pattern (mkdtemp + minimal JSON files + afterEach rmSync).
 
@@ -140,7 +165,7 @@ writer.writePlugin("MyPlugin.js", pluginCode);
 
 Backup files land in `<projectPath>/backups/` as `FileName_YYYY-MM-DDTHH-MM-SS-mmm_NNNN.json`. Auto-pruned to `maxBackups` (env: `BACKUP_MAX_COUNT`, default 10).
 
-For VX Ace / VX / XP engines, backups are binary copies of the Marshal files.
+For VX Ace / VX / XP engines, backups are binary copies of the Marshal files (`.rvdata2`, `.rvdata`, `.rxdata`).
 
 ---
 
@@ -208,7 +233,7 @@ CI runs on Node 20 and 22 with Ruby 3.2 via `.github/workflows/ci.yml`.
 
 ## Runtime read pattern
 
-`get-switch`, `get-variable`, `get-inventory`, and runtime read tools (`get-actor-runtime`, `manage-party-runtime get`, `get-map-state-runtime`) cannot return values via the normal ACK flow. Instead, the handler builds a JS snippet that POSTs the result to `/gamestate`, then waits for the bridge to receive it.
+`get-switch`, `get-variable`, `get-inventory`, and new runtime read tools (`get-actor-runtime`, `manage-party-runtime get`, `get-map-state-runtime`) cannot return values via the normal ACK flow. Instead, the handler builds a JS snippet that POSTs the result to `/gamestate`, then waits for the bridge to receive it.
 
 ```typescript
 // ALWAYS call waitForGameState BEFORE setCommand (avoids race condition)
@@ -217,7 +242,26 @@ ctx.debugBridge.setCommand("execute_script", { code: script });
 const qr = (state as unknown as Record<string, unknown>).queryResult;
 ```
 
-For **write-only** runtime operations (weather, audio, party add/remove), use `waitForAck` instead:
+The script must POST to `http://127.0.0.1:9001/gamestate` with `queryResult` in the body:
+
+```javascript
+(function() {
+  var result = $gameActors.actor(1).hp;
+  fetch('http://127.0.0.1:9001/gamestate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      mapId: $gameMap ? $gameMap.mapId() : 0,
+      playerX: $gamePlayer ? $gamePlayer.x : 0,
+      playerY: $gamePlayer ? $gamePlayer.y : 0,
+      switches: {}, variables: {},
+      queryResult: result
+    })
+  });
+})();
+```
+
+For **write-only** runtime operations (weather, audio, party add/remove), use `waitForAck` instead — these don't return a value:
 
 ```typescript
 await ctx.debugBridge.waitForAck(5000);
@@ -242,7 +286,7 @@ The `queryResult` field is not declared in `GameState`; cast via `as unknown as 
 | Media | `play-bgm`, `play-se`, `play-me`, `stop-bgm`, `fade-out`, `fade-in`, `show-picture`, `erase-picture` |
 | Misc | `wait`, `transfer`, `script`, `battle`, `animation`, `common-event`, `shop` |
 
-Use constants from `src/adapters/mz/constants.ts` instead of magic numbers.
+Use constants from `src/adapters/mz/constants.ts` (e.g. `EVENT_CMD.SHOP_PROCESSING`) instead of magic numbers when building commands manually.
 
 ---
 
@@ -256,7 +300,7 @@ Dedicated `create-*` tools exist for all entity types. They differ from `edit-*`
 
 Available: `create-actor`, `create-enemy`, `create-skill`, `create-item`, `create-weapon`, `create-armor`, `create-class`, `create-state`, `create-animation`
 
-The underlying writer methods (`writer.addSkill()`, etc.) are shared between `edit-*` and `create-*` handlers.
+The underlying writer methods (`writer.addSkill()`, `writer.addItem()`, etc.) are shared between `edit-*` (when no ID given) and `create-*` handlers.
 
 ---
 
@@ -277,17 +321,21 @@ The underlying writer methods (`writer.addSkill()`, etc.) are shared between `ed
 |---|---|---|---|
 | MZ | JSON | `src/adapters/mz/` | Yes (HTTP, port 9001) |
 | MV | JSON | `src/adapters/mv/` | Yes (same HTTP bridge) |
-| VX Ace | `.rvdata2` | `src/adapters/vxace/` | No |
-| VX | `.rvdata` | `src/adapters/vx/` | No |
-| XP | `.rxdata` | `src/adapters/xp/` | No |
+| VX Ace | `.rvdata2` | `src/adapters/vxace/` | Yes (TCP, port 9002) |
+| VX | `.rvdata` | `src/adapters/vx/` | Yes (TCP, port 9002) |
+| XP | `.rxdata` | `src/adapters/xp/` | Yes (TCP, port 9002) |
 
-**Ruby bridge**: Node invokes `bridge.rb` via `spawnSync`. Ruby must be on PATH (or `RUBY_PATH`). Auto-detected at startup — clear error if missing.
+**Marshal bridge** (`src/adapters/ruby-bridge/bridge.rb` + `index.ts`): Node invokes `bridge.rb` via `spawnSync` to convert Marshal ↔ JSON for file I/O. Ruby must be on PATH (or set `RUBY_PATH`). Auto-detected at startup — clear error if missing.
 
-**Key normalization**: Ruby instance variable names are snake_case. `normalize.ts` converts snake_case → camelCase on read, camelCase → snake_case on write.
+**TCP runtime bridge** (`game-bridge.rb` + `tcp-bridge.ts`): For live game control on Ruby engines, `setup-debug-plugin` injects `game-bridge.rb` into `Scripts.rvdata2`. The script opens a TCP server on port 9002 inside the game. `RPGMakerRubyBridge` connects and sends newline-delimited JSON commands (`execute` / `query` / `ping`). `RUBY_RUNTIME_HANDLERS` in `registry-ruby.ts` routes runtime tool calls to `runtime-ruby.ts` handlers that use `ctx.rubyBridge`.
 
-**MapInfos format**: In VX Ace/VX/XP, MapInfos is a Ruby Hash `{id => RPG::MapInfo}`. `VXAceReader.readMapInfosHash()` converts it to the array format the handlers expect.
+**Key normalization**: Ruby instance variable names are snake_case. `normalize.ts` converts snake_case keys → camelCase on read, camelCase → snake_case on write, so MZ handlers receive/send camelCase as usual.
 
-**Plugin tools**: Return a clear error on Ruby engines.
+**MapInfos format**: In VX Ace/VX/XP, MapInfos is a Ruby Hash `{id => RPG::MapInfo}`, not an array. `VXAceReader` has a dedicated `readMapInfosHash()` that converts it to the array format the handlers expect.
+
+**Plugin tools**: Return a clear error on Ruby engines — those engines use script tools (`list-scripts`, `read-script`, `create-script`, `edit-script`, `delete-script`) instead.
+
+**Script tools**: Only available on Ruby engines (VX Ace/VX/XP). Return a clear error on MZ/MV — those engines use plugin tools.
 
 ---
 
@@ -295,6 +343,7 @@ The underlying writer methods (`writer.addSkill()`, etc.) are shared between `ed
 
 | Mistake | Why it breaks |
 |---|---|
+| Exposing a new internal handler directly in `index.ts` `tools` array | Only the 12 macros are exposed to the LLM — wire new handlers into a macro instead |
 | Importing individual handlers in `index.ts` directly | The registry owns the map; adding there keeps batch-edit circular-dep-free |
 | Throwing from a handler | MCP callers expect JSON — always catch and return `{ error }` |
 | Calling `validator` inside `writer.ts` | Validation belongs at the handler boundary, not in the writer |
@@ -302,13 +351,15 @@ The underlying writer methods (`writer.addSkill()`, etc.) are shared between `ed
 | Writing to `MapInfos.json` without the 7 required fields | `writer.writeMap` will throw before touching the file |
 | Plugin filenames with `..` or special chars | `writer.writePlugin` throws; sanitize before calling |
 | Adding `"batch-edit"` to `registry.ts` | Creates circular import — add it only in `index.ts` |
-| Using `waitForAck` for runtime read tools | ACK doesn't carry a return value — use `waitForGameState` |
-| Calling `waitForGameState` after `setCommand` | Race: game may respond before the poll loop starts |
-| Using magic numbers for event codes | Use `EVENT_CMD`, `TRAIT_CODE`, `EFFECT_CODE` from `constants.ts` |
-| Adding `create-*` tools that duplicate `edit-*` logic | Share the `writer.addXxx()` method |
-| Editing MapInfos inside `edit-map` when only metadata changes | Use `edit-map-info` |
-| Typing `ctx.reader` as `RPGMakerReader` in handlers | Type against `IProjectReader` |
-| Calling `waitForGameState` on a Ruby-engine project | Runtime bridge is MZ/MV only |
+| Using `waitForAck` for runtime read tools | ACK doesn't carry a return value — use `waitForGameState` with the fetch-into-gamestate pattern |
+| Calling `waitForGameState` after `setCommand` | Race: game may respond before the poll loop starts — call `waitForGameState` first |
+| Using magic numbers for event codes | Use `EVENT_CMD`, `TRAIT_CODE`, `EFFECT_CODE` from `src/adapters/mz/constants.ts` |
+| Adding `create-*` tools that duplicate `edit-*` logic | CREATE handlers call the same `writer.addXxx()` as edit handlers — share the writer method |
+| Editing MapInfos inside `edit-map` when only metadata changes | Use `edit-map-info` which only touches MapInfos.json (no map file I/O) |
+| Typing `ctx.reader` as `RPGMakerReader` in handlers | Type against `IProjectReader` so the handler works on all engines |
+| Calling `waitForGameState` on a Ruby-engine project | HTTP bridge is MZ/MV only — use `ctx.rubyBridge.queryValue()` on Ruby engines |
+| Using `ctx.rubyBridge` without checking if the game is running | `rubyBridge.executeScript()` will throw with a connection error — handle it and return `notConnected()` JSON |
+| Adding Ruby runtime handlers to `registry.ts` | Ruby runtime overrides live in `registry-ruby.ts` (`RUBY_RUNTIME_HANDLERS`) — `resolveHandler()` picks the right map based on engine |
 
 ---
 
@@ -320,6 +371,8 @@ The underlying writer methods (`writer.addSkill()`, etc.) are shared between `ed
 | `RPGMAKER_ENGINE` | `mz` | Engine: `mz` \| `mv` \| `vxace` \| `vx` \| `xp` |
 | `RPGMAKER_EXECUTABLE_PATH` | — | Path to RPGMaker executable (for `launch-game`) |
 | `RUBY_PATH` | `ruby` | Ruby executable for VX Ace / VX / XP Marshal bridge |
+| `RUBY_BRIDGE_PORT` | `9002` | TCP port for the Ruby runtime bridge (VX Ace/VX/XP) |
+| `RUBY_BRIDGE_TIMEOUT` | `8000` | Timeout in ms for Ruby bridge queries |
 | `MCP_DEBUG` | `false` | Enable verbose debug logging |
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` |
 | `BACKUP_MAX_COUNT` | `10` | Max backup files kept per file |
