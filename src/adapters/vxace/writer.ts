@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { readMarshalFile, writeMarshalFile, type BridgeOptions } from "../ruby-bridge/index.js";
+import { readMarshalFile, writeMarshalFile, readScriptsFile, writeScriptsFile, type BridgeOptions, type ScriptEntry } from "../ruby-bridge/index.js";
 import { denormalizeKeys } from "./normalize.js";
 import type { IProjectWriter } from "../../core/types/writer.js";
 
@@ -182,6 +182,69 @@ export class VXAceWriter implements IProjectWriter {
 
   writeSystemConfig(data: Record<string, unknown>): void {
     this.writeDataFile(`System${this.ext}`, data);
+  }
+
+  // ── Script management (VX Ace / VX / XP use Scripts.<ext> instead of JS plugins) ──
+
+  private get scriptsFilename(): string {
+    return `Scripts${this.ext}`;
+  }
+
+  private readScripts(): ScriptEntry[] {
+    const filePath = path.join(this.dataPath, this.scriptsFilename);
+    if (!fs.existsSync(filePath)) return [];
+    return readScriptsFile(filePath, this.bridgeOpts);
+  }
+
+  private writeScripts(scripts: ScriptEntry[]): void {
+    this.backupFile(this.scriptsFilename);
+    writeScriptsFile(path.join(this.dataPath, this.scriptsFilename), scripts, this.bridgeOpts);
+  }
+
+  listScripts(): { id: number; name: string }[] {
+    return this.readScripts().map(({ id, name }) => ({ id, name }));
+  }
+
+  readScript(idOrName: number | string): ScriptEntry | null {
+    const scripts = this.readScripts();
+    return typeof idOrName === "number"
+      ? scripts.find((s) => s.id === idOrName) ?? null
+      : scripts.find((s) => s.name === idOrName) ?? null;
+  }
+
+  addScript(name: string, source: string, insertBeforeMain = true): number {
+    const scripts = this.readScripts();
+    const newId = Math.floor(Math.random() * 900_000_000) + 100_000_000;
+    const entry: ScriptEntry = { id: newId, name, source };
+    if (insertBeforeMain) {
+      const mainIdx = scripts.findIndex((s) => s.name === "Main");
+      if (mainIdx !== -1) {
+        scripts.splice(mainIdx, 0, entry);
+      } else {
+        scripts.push(entry);
+      }
+    } else {
+      scripts.push(entry);
+    }
+    this.writeScripts(scripts);
+    return newId;
+  }
+
+  updateScript(id: number, updates: { name?: string; source?: string }): void {
+    const scripts = this.readScripts();
+    const idx = scripts.findIndex((s) => s.id === id);
+    if (idx === -1) throw new Error(`Script with ID ${id} not found`);
+    if (updates.name !== undefined) scripts[idx].name = updates.name;
+    if (updates.source !== undefined) scripts[idx].source = updates.source;
+    this.writeScripts(scripts);
+  }
+
+  deleteScript(id: number): void {
+    const scripts = this.readScripts();
+    const idx = scripts.findIndex((s) => s.id === id);
+    if (idx === -1) throw new Error(`Script with ID ${id} not found`);
+    scripts.splice(idx, 1);
+    this.writeScripts(scripts);
   }
 
   // Plugins: not supported in VX Ace (uses Ruby scripts, not JS plugins)

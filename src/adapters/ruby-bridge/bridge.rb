@@ -8,6 +8,7 @@
 #   ruby bridge.rb write <file>  -> reads JSON from stdin, writes Marshal file
 
 require 'json'
+require 'zlib'
 
 # ── Stub classes required for Marshal.load ────────────────────────────────────
 # Marshal.load needs every class referenced in the file to exist.
@@ -194,6 +195,41 @@ when 'write'
     $stderr.puts e.backtrace.first(5).join("\n")
     exit 1
   end
+when 'read-scripts'
+  begin
+    raw = Marshal.load(File.binread(file))
+    result = raw.map do |arr|
+      id, name, compressed = arr
+      source = begin
+        Zlib::Inflate.inflate(compressed.to_s).force_encoding('UTF-8')
+      rescue StandardError
+        ''
+      end
+      { 'id' => id.to_i, 'name' => name.to_s.encode('UTF-8', invalid: :replace, undef: :replace), 'source' => source }
+    end
+    $stdout.puts JSON.generate(result)
+    $stdout.flush
+  rescue StandardError => e
+    $stderr.puts "bridge error (read-scripts #{file}): #{e.message}"
+    $stderr.puts e.backtrace.first(5).join("\n")
+    exit 1
+  end
+when 'write-scripts'
+  begin
+    scripts_data = JSON.parse($stdin.read)
+    scripts = scripts_data.map do |entry|
+      id      = entry['id'].to_i
+      name    = entry['name'].to_s
+      source  = entry['source'].to_s
+      compressed = Zlib::Deflate.deflate(source)
+      [id, name, compressed]
+    end
+    File.binwrite(file, Marshal.dump(scripts))
+  rescue StandardError => e
+    $stderr.puts "bridge error (write-scripts #{file}): #{e.message}"
+    $stderr.puts e.backtrace.first(5).join("\n")
+    exit 1
+  end
 else
-  abort "Unknown mode: #{mode}. Use 'read' or 'write'"
+  abort "Unknown mode: #{mode}. Use 'read', 'write', 'read-scripts', or 'write-scripts'"
 end

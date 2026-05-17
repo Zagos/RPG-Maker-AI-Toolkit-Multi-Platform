@@ -705,6 +705,22 @@ export class RPGMakerWriter implements IProjectWriter {
     this.writeDataFile("System.json", data);
   }
 
+  listScripts(): { id: number; name: string }[] {
+    throw new Error("Script management is only available for Ruby engine projects (VX Ace, VX, XP).");
+  }
+  readScript(_idOrName: number | string): { id: number; name: string; source: string } | null {
+    throw new Error("Script management is only available for Ruby engine projects (VX Ace, VX, XP).");
+  }
+  addScript(_name: string, _source: string, _insertBeforeMain?: boolean): number {
+    throw new Error("Script management is only available for Ruby engine projects (VX Ace, VX, XP).");
+  }
+  updateScript(_id: number, _updates: { name?: string; source?: string }): void {
+    throw new Error("Script management is only available for Ruby engine projects (VX Ace, VX, XP).");
+  }
+  deleteScript(_id: number): void {
+    throw new Error("Script management is only available for Ruby engine projects (VX Ace, VX, XP).");
+  }
+
   /**
    * Refresh System.json versionId to force editor refresh
    */

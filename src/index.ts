@@ -120,6 +120,11 @@ import { ReorderPluginTool } from "./adapters/mz/tools/reorder-plugin.js";
 import { ExportDialogueTool } from "./adapters/mz/tools/export-dialogue.js";
 import { ImportDialogueTool } from "./adapters/mz/tools/import-dialogue.js";
 import { BatchUpdateEntitiesTool } from "./adapters/mz/tools/batch-update-entities.js";
+import { ListScriptsTool } from "./adapters/mz/tools/list-scripts.js";
+import { ReadScriptTool } from "./adapters/mz/tools/read-script.js";
+import { CreateScriptTool } from "./adapters/mz/tools/create-script.js";
+import { EditScriptTool } from "./adapters/mz/tools/edit-script.js";
+import { DeleteScriptTool } from "./adapters/mz/tools/delete-script.js";
 
 // Handlers
 import type { HandlerContext } from "./adapters/mz/handlers/types.js";
@@ -351,6 +356,11 @@ const tools: Tool[] = [
   ExportDialogueTool,
   ImportDialogueTool,
   BatchUpdateEntitiesTool,
+  ListScriptsTool,
+  ReadScriptTool,
+  CreateScriptTool,
+  EditScriptTool,
+  DeleteScriptTool,
   {
     name: "get-change-history",
     description: "Read the MCP change log. Returns a newest-first list of all tool calls that modified RPG Maker project data.",
@@ -392,6 +402,12 @@ const RUBY_UNSUPPORTED_TOOLS = new Set<string>([
   "validate-project",
 ]);
 
+// Tools that are only meaningful for Ruby engine projects (VX Ace / VX / XP).
+// They operate on Scripts.rvdata2 / Scripts.rvdata / Scripts.rxdata which do not exist in MZ/MV.
+const RUBY_ONLY_TOOLS = new Set<string>([
+  "list-scripts", "read-script", "create-script", "edit-script", "delete-script",
+]);
+
 const RUBY_ENGINE_NAMES: Record<string, string> = {
   vxace: "VX Ace",
   vx: "VX",
@@ -422,6 +438,12 @@ async function handleToolCall(toolName: string, toolInput: Record<string, unknow
     const engineLabel = RUBY_ENGINE_NAMES[RPGMAKER_ENGINE];
     return JSON.stringify({
       error: `Tool '${toolName}' is not available for RPG Maker ${engineLabel}. This tool requires RPG Maker MZ or MV.`,
+    });
+  }
+
+  if (!(RPGMAKER_ENGINE in RUBY_ENGINE_NAMES) && RUBY_ONLY_TOOLS.has(toolName)) {
+    return JSON.stringify({
+      error: `Tool '${toolName}' is only available for Ruby engine projects (VX Ace, VX, XP). Use plugin tools for RPG Maker MZ/MV.`,
     });
   }
 

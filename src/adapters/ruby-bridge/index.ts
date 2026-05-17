@@ -88,3 +88,42 @@ export function isRubyAvailable(ruby = resolveRuby({})): boolean {
 export function getBridgeScriptPath(): string {
   return BRIDGE_SCRIPT;
 }
+
+export interface ScriptEntry {
+  id: number;
+  name: string;
+  source: string;
+}
+
+/**
+ * Reads Scripts.rvdata2 / .rvdata / .rxdata and returns decompressed script entries.
+ * Each entry: { id, name, source } — source is the uncompressed Ruby source code.
+ */
+export function readScriptsFile(filePath: string, opts: BridgeOptions = {}): ScriptEntry[] {
+  const result = spawnSync(resolveRuby(opts), [BRIDGE_SCRIPT, "read-scripts", filePath], {
+    encoding:  "utf-8",
+    timeout:   opts.timeout ?? DEFAULT_TIMEOUT_MS,
+    maxBuffer: MAX_BUFFER_BYTES,
+  });
+  if (result.error) throw new Error(`Ruby bridge failed to start: ${result.error.message}`);
+  if (result.status !== 0) throw new Error(`Ruby bridge error reading scripts "${filePath}":\n${result.stderr}`);
+  return JSON.parse(result.stdout) as ScriptEntry[];
+}
+
+/**
+ * Writes script entries back to a Scripts Marshal file, compressing each source with Zlib.
+ */
+export function writeScriptsFile(
+  filePath: string,
+  scripts: ScriptEntry[],
+  opts: BridgeOptions = {}
+): void {
+  const result = spawnSync(resolveRuby(opts), [BRIDGE_SCRIPT, "write-scripts", filePath], {
+    input:     JSON.stringify(scripts),
+    encoding:  "utf-8",
+    timeout:   opts.timeout ?? DEFAULT_TIMEOUT_MS,
+    maxBuffer: MAX_BUFFER_BYTES,
+  });
+  if (result.error) throw new Error(`Ruby bridge failed to start: ${result.error.message}`);
+  if (result.status !== 0) throw new Error(`Ruby bridge error writing scripts "${filePath}":\n${result.stderr}`);
+}
