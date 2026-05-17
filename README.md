@@ -96,11 +96,11 @@ Add this block to `claude_desktop_config.json`:
 
 | Engine | Format | `RPGMAKER_ENGINE` | Runtime bridge |
 |---|---|---|---|
-| RPG Maker MZ | JSON | `mz` (default) | ✅ Full |
-| RPG Maker MV | JSON | `mv` | ✅ Full |
-| RPG Maker VX Ace | `.rvdata2` (Marshal) | `vxace` | ❌ File I/O only |
-| RPG Maker VX | `.rvdata` (Marshal) | `vx` | ❌ File I/O only |
-| RPG Maker XP | `.rxdata` (Marshal) | `xp` | ❌ File I/O only |
+| RPG Maker MZ | JSON | `mz` (default) | ✅ HTTP (port 9001) |
+| RPG Maker MV | JSON | `mv` | ✅ HTTP (port 9001) |
+| RPG Maker VX Ace | `.rvdata2` (Marshal) | `vxace` | ✅ TCP (port 9002) |
+| RPG Maker VX | `.rvdata` (Marshal) | `vx` | ✅ TCP (port 9002) |
+| RPG Maker XP | `.rxdata` (Marshal) | `xp` | ✅ TCP (port 9002) |
 
 ### Project Structure
 
@@ -125,8 +125,10 @@ src/
     ├── xp/                    # RPG Maker XP (.rxdata, extends VXAce)
     └── ruby-bridge/
         ├── bridge.rb          # Ruby Marshal ↔ JSON converter
-        └── index.ts           # Node wrapper (readMarshalFile, writeMarshalFile)
-tests/                         # Vitest test suite (563+ tests, 30 suites)
+        ├── index.ts           # Node wrapper (readMarshalFile, writeMarshalFile)
+        ├── game-bridge.rb     # TCP server injected into the game (RGSS3, port 9002)
+        └── tcp-bridge.ts      # Node.js TCP client for game-bridge.rb
+tests/                         # Vitest test suite (640+ tests, 32 suites)
 scripts/
 ├── copy-assets.js             # Copies .rb files to dist/ after tsc build
 └── launch-rpgmaker.js
@@ -433,6 +435,24 @@ Plugin filenames are sanitized on write: names with `<>:"/\|?*`, path separators
 
 **`reorder-plugin`** — Change the load order of a plugin in `js/plugins.js`. `position: "before"` and `"after"` require `relative_plugin` to specify the reference plugin. Plugin load order is critical in RPG Maker MZ — compatibility layers must load before the plugins they extend.
 
+> **Note:** Plugin tools are only available for **MZ/MV** engines. For VX Ace/VX/XP, use the Script tools below.
+
+---
+
+#### Scripts *(VX Ace / VX / XP only)*
+
+In RPG Maker VX Ace/VX/XP, game code lives in `Scripts.rvdata2` as a list of Ruby scripts. These tools are the Ruby-engine equivalent of the plugin tools.
+
+| Tool | Key inputs |
+|---|---|
+| `list-scripts` | *(no input)* — returns `[{id, name}]` for all scripts |
+| `read-script` | `id?` · `name?` — returns `{id, name, source}` |
+| `create-script` | `name` · `source` — appends a new script, returns `script_id` |
+| `edit-script` | `id` · `name?` · `source?` — update name and/or source |
+| `delete-script` | `id` · `confirm: true` — removes a script by ID |
+
+> **Note:** Script tools are only available for **VX Ace/VX/XP** engines. They return a clear error on MZ/MV.
+
 ---
 
 #### Animations
@@ -510,12 +530,19 @@ All create tools return `{ success, <type>_id, name }`.
 
 #### Runtime Control
 
-These tools control the **running game** in real time. They require:
-1. `setup-debug-plugin` called once on the project
-2. The plugin enabled in the RPG Maker MZ Plugin Manager
-3. The game running (press Play / F5)
+These tools control the **running game** in real time. They work on all five supported engines:
 
-The plugin polls the MCP server every 500 ms via HTTP. All commands are confirmed with an ACK before the tool returns.
+**MZ / MV** — uses an HTTP bridge (port 9001). Setup:
+1. `setup-debug-plugin` installs `RPGMakerDebugger.js` into the project
+2. Enable the plugin in RPG Maker MZ Plugin Manager
+3. Press Play / F5 — the plugin polls the MCP server every 500 ms
+
+**VX Ace / VX / XP** — uses a TCP socket bridge (port 9002). Setup:
+1. `setup-debug-plugin` injects `RpgMakerMCPBridge` into `Scripts.rvdata2`
+2. Close and reopen the project in RPG Maker so it picks up the script
+3. Press Play — the script starts a TCP server on port 9002 inside the game
+
+You can change the port with `RUBY_BRIDGE_PORT` in `.env` (default: `9002`).
 
 | Tool | Description |
 |---|---|
@@ -648,7 +675,7 @@ npm run test:watch        # watch mode
 npm run test:coverage     # with v8 coverage report
 ```
 
-357 tests across 20 suites (coverage excludes `src/index.ts`, `src/tools/**`, `src/templates/**`).
+640+ tests across 32 suites (coverage excludes `src/index.ts`, `src/tools/**`, `src/templates/**`).
 
 ---
 
@@ -661,8 +688,10 @@ npm run test:coverage     # with v8 coverage report
 | `RPG Maker data directory not found` | The project root must contain a `data/` folder |
 | `Invalid plugin filename` | Plugin names must not contain `<>:"/\|?*` or path separators |
 | `mapInfo is missing required fields` | Pass all 7 fields when providing mapInfo to `create-map-event` |
-| `Game not connected` | Launch the game with the RPGMakerDebugger plugin enabled; wait for the map to load |
-| Runtime tool times out | The game may be on the title screen — enter the map first; or the plugin is not enabled |
+| `Game not connected` (MZ/MV) | Launch the game with the RPGMakerDebugger plugin enabled; wait for the map to load |
+| `Ruby bridge not available` (VX Ace) | Run `setup-debug-plugin` first, reopen the project, press Play, and wait for the map to load |
+| Runtime tool times out | The game may be on the title screen — enter the map first; or the bridge script is not running |
+| Ruby bridge port conflict | Change `RUBY_BRIDGE_PORT` in `.env` to an unused port (default: 9002) |
 | Server hangs | `Ctrl+C`, verify the project path is accessible, restart with `npm run dev` |
 
 ---
@@ -675,7 +704,7 @@ RPG Maker AI Toolkit expone tu proyecto como un conjunto de herramientas que un 
 
 Compatible con **todos los engines principales**: MZ, MV (formato JSON) y VX Ace, VX, XP (formato Ruby Marshal con bridge integrado).
 
-Para MZ/MV también incluye un **bridge de control en tiempo real**: instala un plugin ligero en tu juego una vez y el agente puede leer el estado del juego, activar switches, cambiar variables, teleportar al jugador y desencadenar batallas mientras el juego está corriendo.
+Ahora incluye **bridge de control en tiempo real** para todos los engines: HTTP (port 9001) para MZ/MV, y socket TCP (port 9002) para VX Ace/VX/XP. Instala el bridge una vez y el agente puede leer el estado del juego, activar switches, cambiar variables, teleportar al jugador y desencadenar batallas mientras el juego está corriendo.
 
 ### Requisitos
 
@@ -992,10 +1021,13 @@ Fórmula de índice: `x + y × anchura + capa × anchura × altura`. Capas: 0–
 
 #### Control en tiempo real
 
-Estas herramientas controlan el **juego en ejecución**. Requieren:
-1. `setup-debug-plugin` llamado una vez en el proyecto
-2. El plugin activado en el Plugin Manager de RPG Maker MZ
-3. El juego en ejecución (pulsar Play / F5)
+Estas herramientas controlan el **juego en ejecución** y funcionan en los cinco engines:
+
+**MZ / MV** — bridge HTTP (puerto 9001). Setup: `setup-debug-plugin` → activar plugin en Plugin Manager → Play / F5.
+
+**VX Ace / VX / XP** — bridge TCP (puerto 9002). Setup: `setup-debug-plugin` → cerrar y reabrir el proyecto en RPG Maker → Play.
+
+El puerto Ruby puede cambiarse con `RUBY_BRIDGE_PORT` en `.env` (por defecto: `9002`).
 
 | Herramienta | Descripción |
 |---|---|
@@ -1091,7 +1123,7 @@ npm test               # ejecutar todos los tests
 npm run test:coverage  # con informe de cobertura
 ```
 
-357 tests en 20 suites.
+640+ tests en 32 suites.
 
 ### Solución de problemas
 
@@ -1101,8 +1133,10 @@ npm run test:coverage  # con informe de cobertura
 | `RPG Maker project path does not exist` | Verifica la ruta; en Windows usa barras `/` también |
 | `RPG Maker data directory not found` | La raíz del proyecto debe tener una carpeta `data/` |
 | `Invalid plugin filename` | Los nombres de plugin no pueden contener `<>:"/\|?*` ni separadores de ruta |
-| `Game not connected` | Lanza el juego con el plugin RPGMakerDebugger activado; espera a que cargue el mapa |
+| `Game not connected` (MZ/MV) | Lanza el juego con el plugin RPGMakerDebugger activado; espera a que cargue el mapa |
+| `Ruby bridge not available` (VX Ace) | Ejecuta `setup-debug-plugin`, reabre el proyecto, pulsa Play y espera a que cargue el mapa |
 | Tool de runtime agota el tiempo | El juego puede estar en la pantalla de título — entra al mapa primero |
+| Conflicto de puerto Ruby | Cambia `RUBY_BRIDGE_PORT` en `.env` a un puerto libre (por defecto: 9002) |
 | Server cuelgado | `Ctrl+C` → verifica que la ruta es accesible → reinicia con `npm run dev` |
 
 ---

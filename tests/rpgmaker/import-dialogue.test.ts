@@ -6,8 +6,8 @@ import { RPGMakerReader } from "../../src/adapters/mz/reader.js";
 import { RPGMakerWriter } from "../../src/adapters/mz/writer.js";
 import { RPGMakerDebugBridge } from "../../src/adapters/mz/debug-bridge.js";
 import { ChangeLog } from "../../src/core/change-log.js";
-import { handleImportDialogue } from "../../src/adapters/mz/handlers/import-dialogue.js";
-import type { HandlerContext } from "../../src/adapters/mz/handlers/types.js";
+import { handleImportDialogue } from "../../src/handlers/import-dialogue.js";
+import type { HandlerContext } from "../../src/handlers/types.js";
 
 function writeJson(filePath: string, data: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");

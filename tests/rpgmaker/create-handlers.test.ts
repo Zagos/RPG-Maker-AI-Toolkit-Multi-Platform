@@ -6,16 +6,16 @@ import { RPGMakerReader } from "../../src/adapters/mz/reader.js";
 import { RPGMakerWriter } from "../../src/adapters/mz/writer.js";
 import { RPGMakerDebugBridge } from "../../src/adapters/mz/debug-bridge.js";
 import { ChangeLog } from "../../src/core/change-log.js";
-import { handleCreateActor } from "../../src/adapters/mz/handlers/create-actor.js";
-import { handleCreateItem } from "../../src/adapters/mz/handlers/create-item.js";
-import { handleCreateWeapon } from "../../src/adapters/mz/handlers/create-weapon.js";
-import { handleCreateArmor } from "../../src/adapters/mz/handlers/create-armor.js";
-import { handleCreateSkill } from "../../src/adapters/mz/handlers/create-skill.js";
-import { handleCreateClass } from "../../src/adapters/mz/handlers/create-class.js";
-import { handleCreateState } from "../../src/adapters/mz/handlers/create-state.js";
-import { handleCreateEnemy } from "../../src/adapters/mz/handlers/create-enemy.js";
-import { handleCreateAnimation } from "../../src/adapters/mz/handlers/create-animation.js";
-import type { HandlerContext } from "../../src/adapters/mz/handlers/types.js";
+import { handleCreateActor } from "../../src/handlers/create-actor.js";
+import { handleCreateItem } from "../../src/handlers/create-item.js";
+import { handleCreateWeapon } from "../../src/handlers/create-weapon.js";
+import { handleCreateArmor } from "../../src/handlers/create-armor.js";
+import { handleCreateSkill } from "../../src/handlers/create-skill.js";
+import { handleCreateClass } from "../../src/handlers/create-class.js";
+import { handleCreateState } from "../../src/handlers/create-state.js";
+import { handleCreateEnemy } from "../../src/handlers/create-enemy.js";
+import { handleCreateAnimation } from "../../src/handlers/create-animation.js";
+import type { HandlerContext } from "../../src/handlers/types.js";
 
 function writeJson(filePath: string, data: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");

@@ -24,113 +24,46 @@ import { RPGMakerDebugBridge } from "./adapters/mz/debug-bridge.js";
 import type { BattleState, GameState } from "./adapters/mz/debug-bridge.js";
 import { ChangeLog } from "./core/change-log.js";
 
-// Tool definitions
-import { EditActorTool } from "./adapters/mz/tools/edit-actor.js";
-import { EditItemTool } from "./adapters/mz/tools/edit-item.js";
-import { EditEnemyTool } from "./adapters/mz/tools/edit-enemy.js";
-import { CreatePluginTool } from "./adapters/mz/tools/create-plugin.js";
-import { AddDialogueTool } from "./adapters/mz/tools/add-dialogue.js";
-import { CreatePluginAdvancedTool } from "./adapters/mz/tools/create-plugin-advanced.js";
-import { CreateDialogueTool } from "./adapters/mz/tools/create-dialogue-advanced.js";
-import { CreateMapEventTool } from "./adapters/mz/tools/create-map-event.js";
-import { StoryGeneratorTool } from "./adapters/mz/tools/story-generator.js";
-import { SetupDebugPluginTool, LaunchGameTool, StartEncounterTool } from "./adapters/mz/tools/battle-debug.js";
-import { GetGameStateTool } from "./adapters/mz/tools/get-game-state.js";
-import { SetSwitchTool } from "./adapters/mz/tools/set-switch.js";
-import { SetVariableTool } from "./adapters/mz/tools/set-variable.js";
-import { TeleportPlayerTool } from "./adapters/mz/tools/teleport-player.js";
-import { SaveGameTool } from "./adapters/mz/tools/save-game.js";
-import { LoadGameTool } from "./adapters/mz/tools/load-game.js";
-import { SetPartyStateTool } from "./adapters/mz/tools/set-party-state.js";
-import { RunBattleSuiteTool } from "./adapters/mz/tools/run-battle-suite.js";
-import { EditWeaponTool } from "./adapters/mz/tools/edit-weapon.js";
-import { EditArmorTool } from "./adapters/mz/tools/edit-armor.js";
-import { EditSkillTool } from "./adapters/mz/tools/edit-skill.js";
-import { EditClassTool } from "./adapters/mz/tools/edit-class.js";
-import { EditStateTool } from "./adapters/mz/tools/edit-state.js";
-import { ReadMapTool } from "./adapters/mz/tools/read-map.js";
-import { CreateMapTool } from "./adapters/mz/tools/create-map.js";
-import { CreateTroopTool, EditTroopTool } from "./adapters/mz/tools/troop.js";
-import { CreateCommonEventTool, EditCommonEventTool } from "./adapters/mz/tools/common-event.js";
-import { EditMapTool } from "./adapters/mz/tools/edit-map.js";
-import { EditSystemTool } from "./adapters/mz/tools/edit-system.js";
-import { ManageBackupsTool } from "./adapters/mz/tools/manage-backups.js";
+// Tool definitions (internal — batch-edit only)
 import { BatchEditTool } from "./adapters/mz/tools/batch-edit.js";
-import { ListMapsTool } from "./adapters/mz/tools/list-maps.js";
-import { DeleteMapTool } from "./adapters/mz/tools/delete-map.js";
-import { EditMapEventTool, DeleteMapEventTool } from "./adapters/mz/tools/edit-map-event.js";
-import { ManagePluginsTool } from "./adapters/mz/tools/manage-plugins.js";
-import { ReadEntityTool } from "./adapters/mz/tools/read-entity.js";
-import { ExecuteScriptTool } from "./adapters/mz/tools/execute-script.js";
-import { ShowMessageTool } from "./adapters/mz/tools/show-message.js";
-import { EditTilesetTool } from "./adapters/mz/tools/edit-tileset.js";
-import { EditDropItemsTool } from "./adapters/mz/tools/edit-drop-items.js";
-import { EditClassLearningsTool } from "./adapters/mz/tools/edit-class-learnings.js";
-import { EditVehicleTool } from "./adapters/mz/tools/edit-vehicle.js";
-import { GetInventoryTool } from "./adapters/mz/tools/get-inventory.js";
-import { ModifyInventoryTool } from "./adapters/mz/tools/modify-inventory.js";
-import { GetSwitchTool, GetVariableTool } from "./adapters/mz/tools/get-runtime-value.js";
-import { CallCommonEventTool } from "./adapters/mz/tools/call-common-event.js";
-import { ModifyActorRuntimeTool } from "./adapters/mz/tools/modify-actor-runtime.js";
-import { ReadSystemExtendedTool } from "./adapters/mz/tools/read-system-extended.js";
-import { ReadMapTilesTool } from "./adapters/mz/tools/read-map-tiles.js";
-import { PaintMapTilesTool } from "./adapters/mz/tools/paint-map-tiles.js";
-import { FillMapRegionTool } from "./adapters/mz/tools/fill-map-region.js";
-import { ReadTilesetTool } from "./adapters/mz/tools/read-tileset.js";
-import { CreateTilesetTool } from "./adapters/mz/tools/create-tileset.js";
-import { EditTilesetPropertiesTool } from "./adapters/mz/tools/edit-tileset-properties.js";
-import { GenerateCharacterTool } from "./adapters/mz/tools/generate-character.js";
-import { EditTraitsTool } from "./adapters/mz/tools/edit-traits.js";
-import { PaintMapRegionTool } from "./adapters/mz/tools/paint-map-region.js";
-import { EditTroopEventsTool } from "./adapters/mz/tools/edit-troop-events.js";
-import { ListResourcesTool } from "./adapters/mz/tools/list-resources.js";
-import { EditEffectsTool } from "./adapters/mz/tools/edit-effects.js";
-import { EditEventPageTool } from "./adapters/mz/tools/edit-event-page.js";
-import { EditPluginParametersTool } from "./adapters/mz/tools/edit-plugin-parameters.js";
-import { EditEnemyActionsTool } from "./adapters/mz/tools/edit-enemy-actions.js";
-import { DeleteEntityTool } from "./adapters/mz/tools/delete-entity.js";
-import { ReadAnimationTool, EditAnimationTool } from "./adapters/mz/tools/animation.js";
-import { CreateSkillTool } from "./adapters/mz/tools/create-skill.js";
-import { CreateItemTool } from "./adapters/mz/tools/create-item.js";
-import { CreateWeaponTool } from "./adapters/mz/tools/create-weapon.js";
-import { CreateArmorTool } from "./adapters/mz/tools/create-armor.js";
-import { CreateClassTool } from "./adapters/mz/tools/create-class.js";
-import { CreateStateTool } from "./adapters/mz/tools/create-state.js";
-import { CreateEnemyTool } from "./adapters/mz/tools/create-enemy.js";
-import { CreateActorTool } from "./adapters/mz/tools/create-actor.js";
-import { CreateAnimationTool } from "./adapters/mz/tools/create-animation.js";
-import { GetActorRuntimeTool } from "./adapters/mz/tools/get-actor-runtime.js";
-import { ManagePartyRuntimeTool } from "./adapters/mz/tools/manage-party-runtime.js";
-import { ControlWeatherRuntimeTool } from "./adapters/mz/tools/control-weather-runtime.js";
-import { PlayAudioRuntimeTool } from "./adapters/mz/tools/play-audio-runtime.js";
-import { GetMapStateRuntimeTool } from "./adapters/mz/tools/get-map-state-runtime.js";
-import { EditMapInfoTool } from "./adapters/mz/tools/edit-map-info.js";
-import { SearchEntityTool } from "./adapters/mz/tools/search-entity.js";
-import { DuplicateEntityTool } from "./adapters/mz/tools/duplicate-entity.js";
-import { ExportProjectSummaryTool } from "./adapters/mz/tools/project-summary.js";
-import { BatchCreateEntitiesTool } from "./adapters/mz/tools/batch-create-entities.js";
-import { BatchDeleteEntitiesTool } from "./adapters/mz/tools/batch-delete-entities.js";
-import { ValidateProjectTool } from "./adapters/mz/tools/validate-project.js";
-import { FindAndReplaceTool } from "./adapters/mz/tools/find-and-replace.js";
-import { CopyMapTool } from "./adapters/mz/tools/copy-map.js";
-import { CleanupProjectTool } from "./adapters/mz/tools/cleanup-project.js";
-import { ControlTimerRuntimeTool } from "./adapters/mz/tools/control-timer-runtime.js";
-import { GetBattleStateRuntimeTool } from "./adapters/mz/tools/get-battle-state-runtime.js";
-import { ReorderPluginTool } from "./adapters/mz/tools/reorder-plugin.js";
-import { ExportDialogueTool } from "./adapters/mz/tools/export-dialogue.js";
-import { ImportDialogueTool } from "./adapters/mz/tools/import-dialogue.js";
-import { BatchUpdateEntitiesTool } from "./adapters/mz/tools/batch-update-entities.js";
-import { ListScriptsTool } from "./adapters/mz/tools/list-scripts.js";
-import { ReadScriptTool } from "./adapters/mz/tools/read-script.js";
-import { CreateScriptTool } from "./adapters/mz/tools/create-script.js";
-import { EditScriptTool } from "./adapters/mz/tools/edit-script.js";
-import { DeleteScriptTool } from "./adapters/mz/tools/delete-script.js";
+
+// Macro tool schemas + handlers (Phase A)
+import { RuntimeControlTool } from "./macro/schemas/runtime-control.js";
+import { RuntimeInspectTool } from "./macro/schemas/runtime-inspect.js";
+import { handleRuntimeControl } from "./macro/handlers/runtime-control.js";
+import { handleRuntimeInspect } from "./macro/handlers/runtime-inspect.js";
+
+// Macro tool schemas + handlers (Phase B)
+import { QueryDataTool } from "./macro/schemas/query-data.js";
+import { GameEntityTool } from "./macro/schemas/game-entity.js";
+import { handleQueryData } from "./macro/handlers/query-data.js";
+import { handleGameEntity } from "./macro/handlers/game-entity.js";
+
+// Macro tool schemas + handlers (Phase C)
+import { GameMapTool } from "./macro/schemas/game-map.js";
+import { DialogueToolsTool } from "./macro/schemas/dialogue-tools.js";
+import { handleGameMap } from "./macro/handlers/game-map.js";
+import { handleDialogueTools } from "./macro/handlers/dialogue-tools.js";
+
+// Macro tool schemas + handlers (Phase D)
+import { BattleSimTool } from "./macro/schemas/battle-sim.js";
+import { ProjectToolsTool } from "./macro/schemas/project-tools.js";
+import { handleBattleSim } from "./macro/handlers/battle-sim.js";
+import { handleProjectTools } from "./macro/handlers/project-tools.js";
+
+// Macro tool schemas + handlers (Phase E)
+import { PluginManageTool } from "./macro/schemas/plugin-manage.js";
+import { GameSetupTool } from "./macro/schemas/game-setup.js";
+import { ManageBackupsMacroTool } from "./macro/schemas/manage-backups.js";
+import { handlePluginManage } from "./macro/handlers/plugin-manage.js";
+import { handleGameSetup } from "./macro/handlers/game-setup.js";
+import { handleManageBackups } from "./macro/handlers/manage-backups.js";
 
 // Handlers
-import type { HandlerContext } from "./adapters/mz/handlers/types.js";
-import { TOOL_HANDLERS as BASE_TOOL_HANDLERS } from "./adapters/mz/handlers/registry.js";
-import { RUBY_RUNTIME_HANDLERS } from "./adapters/mz/handlers/registry-ruby.js";
-import { handleBatchEdit } from "./adapters/mz/handlers/batch-edit.js";
+import type { HandlerContext } from "./handlers/types.js";
+import { TOOL_HANDLERS as BASE_TOOL_HANDLERS } from "./handlers/registry.js";
+import { RUBY_RUNTIME_HANDLERS } from "./handlers/registry-ruby.js";
+import { handleBatchEdit } from "./handlers/batch-edit.js";
 import { RPGMakerRubyBridge } from "./adapters/ruby-bridge/tcp-bridge.js";
 
 function loadEnvFile(): void {
@@ -242,160 +175,51 @@ const tools: Tool[] = [
     description: "Check if the MCP server is running and connected properly",
     inputSchema: { type: "object" as const, properties: {} },
   },
-  {
-    name: "list-game-data",
-    description: "List all available game data types in the RPG Maker project (enemies, items, actors, etc.)",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        data_type: {
-          type: "string",
-          enum: ["Actors","Classes","Skills","Items","Weapons","Armors","Enemies","Troops","States","Animations","Tilesets","Maps","CommonEvents"],
-          description: "Type of game data to list",
-        },
-      },
-      required: ["data_type"],
-    },
-  },
-  EditActorTool,
-  EditItemTool,
-  EditEnemyTool,
-  CreatePluginTool,
-  AddDialogueTool,
-  CreatePluginAdvancedTool,
-  CreateDialogueTool,
-  CreateMapEventTool,
-  StoryGeneratorTool,
-  SetupDebugPluginTool,
-  LaunchGameTool,
-  StartEncounterTool,
-  GetGameStateTool,
-  SetSwitchTool,
-  SetVariableTool,
-  TeleportPlayerTool,
-  SaveGameTool,
-  LoadGameTool,
-  SetPartyStateTool,
-  RunBattleSuiteTool,
-  EditWeaponTool,
-  EditArmorTool,
-  EditSkillTool,
-  EditClassTool,
-  EditStateTool,
-  ReadMapTool,
-  CreateMapTool,
-  CreateTroopTool,
-  EditTroopTool,
-  CreateCommonEventTool,
-  EditCommonEventTool,
-  EditMapTool,
-  EditSystemTool,
-  ManageBackupsTool,
+  // Phase A macros
+  RuntimeControlTool,
+  RuntimeInspectTool,
+  // Phase B macros
+  QueryDataTool,
+  GameEntityTool,
+  // Phase C macros
+  GameMapTool,
+  DialogueToolsTool,
+  // Phase D macros
+  BattleSimTool,
+  ProjectToolsTool,
+  // Phase E macros
+  PluginManageTool,
+  GameSetupTool,
+  ManageBackupsMacroTool,
+  // escape hatch
   BatchEditTool,
-  ListMapsTool,
-  DeleteMapTool,
-  EditMapEventTool,
-  DeleteMapEventTool,
-  ManagePluginsTool,
-  ReadEntityTool,
-  ExecuteScriptTool,
-  ShowMessageTool,
-  EditTilesetTool,
-  EditDropItemsTool,
-  EditClassLearningsTool,
-  EditVehicleTool,
-  GetInventoryTool,
-  ModifyInventoryTool,
-  GetSwitchTool,
-  GetVariableTool,
-  CallCommonEventTool,
-  ModifyActorRuntimeTool,
-  ReadSystemExtendedTool,
-  ReadMapTilesTool,
-  PaintMapTilesTool,
-  FillMapRegionTool,
-  ReadTilesetTool,
-  CreateTilesetTool,
-  EditTilesetPropertiesTool,
-  GenerateCharacterTool,
-  EditTraitsTool,
-  PaintMapRegionTool,
-  EditTroopEventsTool,
-  ListResourcesTool,
-  EditEffectsTool,
-  EditEventPageTool,
-  EditPluginParametersTool,
-  EditEnemyActionsTool,
-  DeleteEntityTool,
-  ReadAnimationTool,
-  EditAnimationTool,
-  CreateSkillTool,
-  CreateItemTool,
-  CreateWeaponTool,
-  CreateArmorTool,
-  CreateClassTool,
-  CreateStateTool,
-  CreateEnemyTool,
-  CreateActorTool,
-  CreateAnimationTool,
-  GetActorRuntimeTool,
-  ManagePartyRuntimeTool,
-  ControlWeatherRuntimeTool,
-  PlayAudioRuntimeTool,
-  GetMapStateRuntimeTool,
-  EditMapInfoTool,
-  SearchEntityTool,
-  DuplicateEntityTool,
-  ExportProjectSummaryTool,
-  BatchCreateEntitiesTool,
-  BatchDeleteEntitiesTool,
-  ValidateProjectTool,
-  FindAndReplaceTool,
-  CopyMapTool,
-  CleanupProjectTool,
-  ControlTimerRuntimeTool,
-  GetBattleStateRuntimeTool,
-  ReorderPluginTool,
-  ExportDialogueTool,
-  ImportDialogueTool,
-  BatchUpdateEntitiesTool,
-  ListScriptsTool,
-  ReadScriptTool,
-  CreateScriptTool,
-  EditScriptTool,
-  DeleteScriptTool,
-  {
-    name: "get-change-history",
-    description: "Read the MCP change log. Returns a newest-first list of all tool calls that modified RPG Maker project data.",
-    inputSchema: { type: "object" as const, properties: {
-      limit: { type: "integer", description: "Maximum number of entries to return (default 50)" },
-      entity_type: { type: "string", description: "Filter by entity type" },
-      tool: { type: "string", description: "Filter by tool name" },
-      action: { type: "string", enum: ["create", "update", "delete"], description: "Filter by action" },
-      since: { type: "string", description: "ISO 8601 datetime lower bound" },
-    }},
-  },
 ];
 
-// Tool → handler routing (base from registry + batch-edit added here to avoid circular import)
+// Tool → handler routing (base from registry + macro handlers + batch-edit added here to avoid circular import)
 const TOOL_HANDLERS: Record<string, (ctx: HandlerContext) => Promise<string>> = {
   ...BASE_TOOL_HANDLERS,
   "batch-edit": handleBatchEdit,
+  "runtime-control": handleRuntimeControl,
+  "runtime-inspect": handleRuntimeInspect,
+  "query-data": handleQueryData,
+  "game-entity": handleGameEntity,
+  "game-map": handleGameMap,
+  "dialogue-tools": handleDialogueTools,
+  "battle-sim": handleBattleSim,
+  "project-tools": handleProjectTools,
+  "plugin-manage": handlePluginManage,
+  "game-setup": handleGameSetup,
+  "manage-backups": handleManageBackups,
 };
 
-// Tools that require RPG Maker MZ or MV and must not run on Ruby engines (VX Ace / VX / XP).
-//   plugins  — JS plugin system doesn't exist in Ruby engines (use script tools instead)
-//   runtime  — run-battle-suite needs the NW.js event loop; no Ruby equivalent implemented yet
+// batch-edit still accepts internal tool names directly — guard those in case someone uses it
+// with a Ruby-unsupported tool on a Ruby engine.
 const RUBY_UNSUPPORTED_TOOLS = new Set<string>([
-  // plugins
   "create-plugin", "create-plugin-advanced", "manage-plugins",
   "edit-plugin-parameters", "reorder-plugin",
-  // runtime tools with no Ruby equivalent (yet)
   "run-battle-suite",
 ]);
 
-// Tools that are only meaningful for Ruby engine projects (VX Ace / VX / XP).
-// They operate on Scripts.rvdata2 / Scripts.rvdata / Scripts.rxdata which do not exist in MZ/MV.
 const RUBY_ONLY_TOOLS = new Set<string>([
   "list-scripts", "read-script", "create-script", "edit-script", "delete-script",
 ]);
@@ -406,9 +230,10 @@ const RUBY_ENGINE_NAMES: Record<string, string> = {
   xp: "XP",
 };
 
-// Event command tools work on Ruby engines (codes are identical to MZ/MV for core commands),
-// but some parameters differ in edge cases. Append a warning to successful responses.
+// Macros/tools that build event commands — append a Ruby compatibility note on success.
 const RUBY_EVENT_CMD_TOOLS = new Set<string>([
+  "dialogue-tools", "game-map",
+  // internal names (still reachable via batch-edit)
   "create-map-event", "edit-map-event", "edit-event-page",
   "add-dialogue", "create-dialogue-advanced", "import-dialogue",
   "export-dialogue", "story-generator", "edit-troop-events",
@@ -504,7 +329,7 @@ async function main() {
 
   if (!validateSetup()) process.exit(1);
 
-  const server = new McpServer({ name: "rpgmaker-mcp", version: "0.2.0" });
+  const server = new McpServer({ name: "rpgmaker-mcp", version: "1.0.0" });
 
   for (const tool of tools) {
     server.registerTool(

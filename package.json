@@ -1,6 +1,6 @@
 {
   "name": "rpgmaker-ai-toolkit",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Multi-platform MCP server for RPG Maker MZ, MV, VX Ace, VX and XP",
   "main": "dist/index.js",
   "type": "module",
