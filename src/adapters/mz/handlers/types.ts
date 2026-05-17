@@ -8,6 +8,7 @@ export interface HandlerContext {
   writer: IProjectWriter;
   input: Record<string, unknown>;
   projectPath: string;
+  engine: string;
   debugBridge: RPGMakerDebugBridge;
   changeLog: ChangeLog;
   debug: boolean;

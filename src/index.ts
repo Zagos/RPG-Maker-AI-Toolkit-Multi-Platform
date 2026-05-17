@@ -398,8 +398,6 @@ const RUBY_UNSUPPORTED_TOOLS = new Set<string>([
   // plugins
   "create-plugin", "create-plugin-advanced", "manage-plugins",
   "edit-plugin-parameters", "reorder-plugin",
-  // mz-specific data structures
-  "validate-project",
 ]);
 
 // Tools that are only meaningful for Ruby engine projects (VX Ace / VX / XP).
@@ -474,6 +472,7 @@ async function handleToolCall(toolName: string, toolInput: Record<string, unknow
     writer,
     input: toolInput,
     projectPath: RPGMAKER_PROJECT_PATH!,
+    engine: RPGMAKER_ENGINE,
     debugBridge,
     changeLog,
     debug: DEBUG,
