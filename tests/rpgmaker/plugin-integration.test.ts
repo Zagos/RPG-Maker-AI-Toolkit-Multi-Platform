@@ -22,7 +22,7 @@ import { ChangeLog } from "../../src/core/change-log.js";
 import {
   handleSetupDebugPlugin,
   handleCreatePlugin,
-} from "../../src/adapters/mz/handlers/plugin.js";
+} from "../../src/handlers/plugin.js";
 import {
   handleGetGameState,
   handleSetSwitch,
@@ -33,8 +33,8 @@ import {
   handleLoadGame,
   handleSetPartyState,
   handleRunBattleSuite,
-} from "../../src/adapters/mz/handlers/debug.js";
-import type { HandlerContext } from "../../src/adapters/mz/handlers/types.js";
+} from "../../src/handlers/debug.js";
+import type { HandlerContext } from "../../src/handlers/types.js";
 import type { GameState } from "../../src/adapters/mz/debug-bridge.js";
 
 // ---------------------------------------------------------------------------
